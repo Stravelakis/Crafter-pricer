@@ -1,1 +1,193 @@
 @import "tailwindcss";
+
+@theme {
+  --font-display: "Chakra Petch", "IBM Plex Sans", sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-paper: #f1efe8;
+  --color-panel: #fbfaf5;
+  --color-card: #fffef9;
+  --color-ink: #15212e;
+  --color-ink-2: #2b3949;
+  --color-mute: #68717c;
+  --color-line: #d8d3c4;
+  --color-ember: #e8551e;
+  --color-ember-deep: #c2400f;
+  --color-teal: #0e7c66;
+  --color-amber: #b57d0a;
+  --color-danger: #b23a2e;
+
+  --shadow-press: 7px 7px 0 rgba(21, 33, 46, 0.09);
+  --shadow-press-sm: 4px 4px 0 rgba(21, 33, 46, 0.09);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  background-image:
+    radial-gradient(1100px 560px at 88% -8%, rgba(232, 85, 30, 0.075), transparent 62%),
+    radial-gradient(900px 520px at -12% 34%, rgba(14, 124, 102, 0.07), transparent 60%),
+    radial-gradient(700px 500px at 55% 115%, rgba(21, 33, 46, 0.06), transparent 60%),
+    linear-gradient(rgba(21, 33, 46, 0.042) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(21, 33, 46, 0.042) 1px, transparent 1px);
+  background-size: auto, auto, auto, 28px 28px, 28px 28px;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* film-grain overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: rgba(232, 85, 30, 0.28);
+}
+
+.panel {
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  box-shadow: var(--shadow-press);
+}
+
+.panel-dark {
+  background: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  border-radius: 6px;
+  box-shadow: 7px 7px 0 rgba(232, 85, 30, 0.28);
+}
+
+/* ledger dotted leaders */
+.ledger-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+.ledger-row .dots {
+  flex: 1;
+  border-bottom: 2px dotted rgba(21, 33, 46, 0.22);
+  transform: translateY(-3px);
+  min-width: 1.5rem;
+}
+
+/* scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-on {
+  opacity: 1;
+  transform: none;
+}
+
+/* meter marker */
+.meter-mark {
+  transition: left 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.zone-anim {
+  transition:
+    left 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* range slider */
+input[type="range"].range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--color-ember) 0%,
+    var(--color-ember) var(--fill, 50%),
+    rgba(21, 33, 46, 0.18) var(--fill, 50%),
+    rgba(21, 33, 46, 0.18) 100%
+  );
+  outline: none;
+}
+input[type="range"].range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--color-ink);
+  border: 3px solid var(--color-ember);
+  cursor: grab;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+input[type="range"].range::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 5px rgba(232, 85, 30, 0.18);
+}
+input[type="range"].range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--color-ink);
+  border: 3px solid var(--color-ember);
+  cursor: grab;
+}
+
+/* number inputs: hide spinners for a cleaner ledger look */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+@keyframes stamp-in {
+  0% {
+    opacity: 0;
+    transform: rotate(-14deg) scale(1.6);
+  }
+  60% {
+    opacity: 1;
+    transform: rotate(-4deg) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-4deg) scale(1);
+  }
+}
+.stamp-in {
+  animation: stamp-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes tick-up {
+  from {
+    background-color: rgba(232, 85, 30, 0.22);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.tick-flash {
+  animation: tick-up 0.7s ease-out both;
+}
+
+/* thin scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(21, 33, 46, 0.3) transparent;
+}
