@@ -7,6 +7,8 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
+import { HELP } from "../lib/help";
 
 /* ---------------- icons (inline SVG) ---------------- */
 
@@ -14,7 +16,7 @@ export type IconName =
   | "printer" | "layers" | "uv" | "laser" | "zap" | "dollar" | "clock" | "user"
   | "home" | "percent" | "chart" | "search" | "plus" | "trash" | "sparkle"
   | "image" | "globe" | "sheet" | "download" | "copy" | "check" | "x" | "link"
-  | "megaphone" | "cog" | "target" | "alert" | "arrow" | "wand" | "receipt";
+  | "megaphone" | "cog" | "target" | "alert" | "arrow" | "wand" | "receipt" | "compass";
 
 const ICONS: Record<IconName, ReactNode> = {
   printer: (
@@ -187,6 +189,12 @@ const ICONS: Record<IconName, ReactNode> = {
       <path d="M9 8h6M9 12h6M9 16h4" />
     </>
   ),
+  compass: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M15.5 8.5l-2.2 5-5 2.2 2.2-5 5-2.2z" />
+    </>
+  ),
 };
 
 export function Icon({
@@ -270,6 +278,146 @@ export function Spinner({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+/* ---------------- help popover (hover + click) ---------------- */
+
+function HelpBlock({ label, text, tone = "teal" }: { label: string; text: string; tone?: "teal" | "amber" }) {
+  return (
+    <div className="mt-2.5">
+      <p
+        className={`font-mono text-[9px] font-semibold uppercase tracking-[0.18em] ${
+          tone === "amber" ? "text-amber brightness-125" : "text-teal brightness-150"
+        }`}
+      >
+        {label}
+      </p>
+      <p className="mt-0.5 text-xs leading-relaxed text-paper/85">{text}</p>
+    </div>
+  );
+}
+
+export function HelpTip({ k }: { k: string }) {
+  const entry = HELP[k];
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+  const popRef = useRef<HTMLDivElement | null>(null);
+  const hoverT = useRef(0);
+  const pinned = useRef(false);
+
+  const place = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const W = 300;
+    const H = 320;
+    const left = Math.min(Math.max(8, r.left + r.width / 2 - W / 2), window.innerWidth - W - 8);
+    let top = r.bottom + 8;
+    if (top + H > window.innerHeight - 8) top = Math.max(8, r.top - H - 8);
+    setPos({ top, left });
+  };
+  const show = (pin: boolean) => {
+    pinned.current = pin;
+    place();
+    setOpen(true);
+  };
+  const hide = () => {
+    if (pinned.current) return;
+    setOpen(false);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (popRef.current?.contains(t) || btnRef.current?.contains(t)) return;
+      pinned.current = false;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        pinned.current = false;
+        setOpen(false);
+      }
+    };
+    const onScroll = () => {
+      pinned.current = false;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onScroll);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [open]);
+
+  if (!entry) return null;
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        aria-label={`Explain this field: ${entry.what}`}
+        onMouseDown={(e) => e.preventDefault()}
+        onMouseEnter={() => {
+          window.clearTimeout(hoverT.current);
+          hoverT.current = window.setTimeout(() => show(false), 220);
+        }}
+        onMouseLeave={() => {
+          window.clearTimeout(hoverT.current);
+          hide();
+        }}
+        onFocus={() => show(false)}
+        onBlur={() => hide()}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          window.clearTimeout(hoverT.current);
+          if (open && pinned.current) {
+            pinned.current = false;
+            setOpen(false);
+          } else {
+            show(true);
+          }
+        }}
+        className="grid h-[15px] w-[15px] shrink-0 place-items-center rounded-full border border-line font-mono text-[9px] font-bold leading-none text-mute transition-all hover:border-ember hover:bg-ember hover:text-paper focus:border-ember focus:text-ember"
+      >
+        ?
+      </button>
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            ref={popRef}
+            role="tooltip"
+            onMouseEnter={() => window.clearTimeout(hoverT.current)}
+            onMouseLeave={() => hide()}
+            className="tip-pop pointer-events-auto fixed z-[90] w-[300px] overflow-hidden border border-ember/60 bg-ink text-paper shadow-[var(--shadow-press)]"
+            style={{ top: pos.top, left: pos.left }}
+          >
+            <Noise opacity={0.1} />
+            <div className="relative px-4 py-3">
+              <p className="flex items-center justify-between font-mono text-[9px] font-semibold uppercase tracking-[0.22em] text-ember">
+                <span>Field guide</span>
+                <span className="text-paper/35">{k}</span>
+              </p>
+              <HelpBlock label="What it is" text={entry.what} />
+              <HelpBlock label="How to fill it in" text={entry.how} />
+              <HelpBlock label="Why it matters" text={entry.why} />
+              <div className="mt-2.5 border-t border-paper/15 pt-0.5">
+                <HelpBlock label="If left empty" text={entry.empty} tone="amber" />
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
 export function Modal({
   open,
   onClose,
@@ -320,6 +468,7 @@ export function Section({
   sub,
   children,
   accent = false,
+  id,
 }: {
   num: string;
   icon: IconName;
@@ -327,9 +476,10 @@ export function Section({
   sub?: string;
   children: ReactNode;
   accent?: boolean;
+  id?: string;
 }) {
   return (
-    <section className="panel overflow-hidden">
+    <section id={id} className="panel scroll-mt-24 overflow-hidden">
       <header
         className={`flex items-center gap-3 border-b border-line px-5 py-3.5 ${accent ? "bg-ember text-paper" : "bg-card"}`}
       >
@@ -387,18 +537,23 @@ export function Reveal({
 export function Field({
   label,
   hint,
+  help,
   children,
   className = "",
 }: {
   label: string;
   hint?: string;
+  help?: string;
   children: ReactNode;
   className?: string;
 }) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-1 flex items-baseline justify-between gap-2">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-mute">{label}</span>
+      <span className="mb-1 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-mute">
+          {label}
+          {help && <HelpTip k={help} />}
+        </span>
         {hint && <span className="truncate font-mono text-[9px] text-line">{hint}</span>}
       </span>
       {children}

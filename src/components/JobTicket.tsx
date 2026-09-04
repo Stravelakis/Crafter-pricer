@@ -1,6 +1,6 @@
 import type { Currency, Job, Machine, Quote } from "../types";
 import { convertPct, fmtMoney, fmtNum, MODE_MAX } from "../lib/calc";
-import { AnimatedNumber, Field, Icon, NumInput, Reveal, Seg, Slider, SelectInput, TextInput } from "./ui";
+import { AnimatedNumber, Field, HelpTip, Icon, NumInput, Reveal, Seg, Slider, SelectInput, TextInput } from "./ui";
 
 export default function JobTicket({
   job,
@@ -39,7 +39,7 @@ export default function JobTicket({
           </span>
         </header>
         <div className="space-y-4 p-5">
-          <Field label="Job name">
+          <Field label="Job name" help="jName">
             <TextInput
               value={job.name}
               onChange={(v) => onChange({ name: v })}
@@ -47,7 +47,7 @@ export default function JobTicket({
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Machine" hint="focuses the fleet panel" className="col-span-2">
+            <Field label="Machine" help="jMachine" hint="focuses the fleet panel" className="col-span-2">
               <SelectInput
                 value={machine?.id ?? ""}
                 onChange={(v) => onChange({ machineId: v })}
@@ -58,19 +58,19 @@ export default function JobTicket({
                 }
               />
             </Field>
-            <Field label="Machine time" hint="per unit">
+            <Field label="Machine time" help="jMachineH" hint="per unit">
               <NumInput value={job.machineHours} onChange={(n) => onChange({ machineHours: n })} suffix="h" step={0.25} min={0} />
             </Field>
-            <Field label="Labor time" hint="per unit">
+            <Field label="Labor time" help="jLaborH" hint="per unit">
               <NumInput value={job.laborHours} onChange={(n) => onChange({ laborHours: n })} suffix="h" step={0.25} min={0} />
             </Field>
-            <Field label="Materials" hint="per unit">
+            <Field label="Materials" help="jMaterials" hint="per unit">
               <NumInput value={job.materialCost} onChange={(n) => onChange({ materialCost: n })} prefix="$" step={0.5} min={0} />
             </Field>
-            <Field label="Setup / prep fee" hint="whole order">
+            <Field label="Setup / prep fee" help="jSetup" hint="whole order">
               <NumInput value={job.setupFee} onChange={(n) => onChange({ setupFee: n })} prefix="$" step={1} min={0} />
             </Field>
-            <Field label="Quantity">
+            <Field label="Quantity" help="jQty">
               <NumInput
                 value={job.quantity}
                 onChange={(n) => onChange({ quantity: Math.max(1, Math.floor(n)) })}
@@ -93,7 +93,11 @@ export default function JobTicket({
 
           <div className="border-t border-dashed border-line pt-4">
             <div className="mb-2 flex items-center justify-between gap-3">
-              <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-mute">Profit model</span>
+              <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-mute">
+                Profit model
+                <HelpTip k="jMode" />
+                <HelpTip k="jPct" />
+              </span>
               <Seg
                 options={[
                   { v: "margin" as const, label: "Margin" },

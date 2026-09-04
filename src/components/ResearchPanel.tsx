@@ -1,7 +1,7 @@
 import type { Finding, Integrations, SearchProvider } from "../types";
 import { fmtMoney } from "../lib/calc";
 import type { Currency } from "../types";
-import { Field, Icon, Reveal, Section, Seg, Spinner, TextArea } from "./ui";
+import { Field, HelpTip, Icon, Reveal, Section, Seg, Spinner, TextArea } from "./ui";
 
 const PROVIDER_LABEL: Record<SearchProvider, string> = {
   tavily: "Tavily",
@@ -56,7 +56,7 @@ export default function ResearchPanel({
         title="Competitor research"
         sub="Describe the item — live web search finds what others charge, with a link to each competitor listing."
       >
-        <Field label="What are we making?" hint="used as the search query">
+        <Field label="What are we making?" help="rqQuery" hint="used as the search query">
           <TextArea
             value={query}
             onChange={onQuery}
@@ -86,6 +86,7 @@ export default function ResearchPanel({
             {PROVIDER_LABEL[integrations.provider]}
             {configured ? " ready" : " — add key"}
           </button>
+          <HelpTip k="rqProvider" />
         </div>
         {!configured && (
           <p className="mt-2 text-[11px] leading-relaxed text-mute">

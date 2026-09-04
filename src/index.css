@@ -174,6 +174,20 @@ input[type="number"] {
   animation: stamp-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes tip-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tip-pop {
+  animation: tip-pop 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @keyframes tick-up {
   from {
     background-color: rgba(232, 85, 30, 0.22);

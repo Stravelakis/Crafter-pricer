@@ -134,19 +134,19 @@ export default function MarketPanel({
             </ul>
           )}
           <div className="grid grid-cols-2 gap-2.5 border border-line bg-card p-3 sm:grid-cols-6">
-            <Field label="What did you find" className="col-span-2">
+            <Field label="What did you find" help="logLabel" className="col-span-2">
               <TextInput value={label} onChange={setLabel} placeholder="e.g. Local shop — UV phone cases" />
             </Field>
-            <Field label="Low">
+            <Field label="Low" help="logLow">
               <NumInput value={low} onChange={setLow} prefix="$" step={0.5} />
             </Field>
-            <Field label="High">
+            <Field label="High" help="logHigh">
               <NumInput value={high} onChange={setHigh} prefix="$" step={0.5} />
             </Field>
-            <Field label="Unit" hint="$/g, $/min…">
+            <Field label="Unit" help="logUnit" hint="$/g, $/min…">
               <TextInput value={unit} onChange={setUnit} placeholder="$/item" />
             </Field>
-            <Field label="Source">
+            <Field label="Source" help="logSource">
               <TextInput value={source} onChange={setSource} placeholder="etsy.com" />
             </Field>
             <div className="col-span-2 flex items-end sm:col-span-6">

@@ -2,7 +2,7 @@ import type { Currency, Machine, MachineType } from "../types";
 import { depPerHour, fmtMoney, machinePerHour, runPerHour } from "../lib/calc";
 import { MACHINE_TYPE_LABELS } from "../lib/market";
 import type { Settings } from "../types";
-import { Field, Icon, NumInput, Reveal, Section, SelectInput, Spinner, TextInput } from "./ui";
+import { Field, HelpTip, Icon, NumInput, Reveal, Section, SelectInput, Spinner, TextInput } from "./ui";
 
 const TYPE_ICON: Record<MachineType, "printer" | "layers" | "uv" | "laser" | "cog"> = {
   fdm: "printer",
@@ -52,6 +52,7 @@ function MachineCard({
         <div className="grid min-w-0 flex-1 gap-2.5">
           <div className="flex items-center gap-2">
             <Icon name={TYPE_ICON[m.type]} className="h-4.5 w-4.5 shrink-0 text-ember" />
+            <HelpTip k="mName" />
             <TextInput value={m.name} onChange={(v) => onPatch({ name: v })} placeholder="Machine name" />
             <button
               onClick={onRemove}
@@ -62,7 +63,7 @@ function MachineCard({
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-            <Field label="Type" className="col-span-2 sm:col-span-1">
+            <Field label="Type" help="mType" className="col-span-2 sm:col-span-1">
               <SelectInput
                 value={m.type}
                 onChange={(v) => onPatch({ type: v as MachineType })}
@@ -72,25 +73,25 @@ function MachineCard({
                 }))}
               />
             </Field>
-            <Field label="Purchase cost">
+            <Field label="Purchase cost" help="mPurchase">
               <NumInput value={m.purchaseCost} onChange={(n) => onPatch({ purchaseCost: n })} prefix="$" step={50} min={0} />
             </Field>
-            <Field label="Buy-back value" hint="at repurchase">
+            <Field label="Buy-back value" help="mSalvage" hint="at repurchase">
               <NumInput value={m.salvageValue} onChange={(n) => onPatch({ salvageValue: n })} prefix="$" step={25} min={0} />
             </Field>
-            <Field label="Repurchase in" hint="months">
+            <Field label="Repurchase in" help="mLifespan" hint="months">
               <NumInput value={m.lifespanMonths} onChange={(n) => onPatch({ lifespanMonths: n })} suffix="mo" step={6} min={1} />
             </Field>
-            <Field label="Use" hint="h/month">
+            <Field label="Use" help="mHours" hint="h/month">
               <NumInput value={m.hoursPerMonth} onChange={(n) => onPatch({ hoursPerMonth: n })} suffix="h" step={5} min={0} />
             </Field>
-            <Field label="Power draw">
+            <Field label="Power draw" help="mWatts">
               <NumInput value={m.watts} onChange={(n) => onPatch({ watts: n })} suffix="W" step={25} min={0} />
             </Field>
-            <Field label="Consumables" hint="$/run h">
+            <Field label="Consumables" help="mConsumables" hint="$/run h">
               <NumInput value={m.consumablesPerHour} onChange={(n) => onPatch({ consumablesPerHour: n })} prefix="$" step={0.1} min={0} />
             </Field>
-            <Field label="Maintenance" hint="$/month">
+            <Field label="Maintenance" help="mMaintenance" hint="$/month">
               <NumInput value={m.maintenancePerMonth} onChange={(n) => onPatch({ maintenancePerMonth: n })} prefix="$" step={5} min={0} />
             </Field>
           </div>

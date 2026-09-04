@@ -70,13 +70,13 @@ export default function OfferModal({
   return (
     <Modal open={open} onClose={onClose} title="Offer letter (.md)" wide>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Client name">
+        <Field label="Client name" help="oClient">
           <TextInput value={client} onChange={setClient} placeholder="e.g. Acme Coffee Roasters" />
         </Field>
-        <Field label="Valid for" hint="days from today">
+        <Field label="Valid for" help="oValid" hint="days from today">
           <NumInput value={validDays} onChange={(n) => setValidDays(Math.max(1, Math.round(n)))} suffix="days" step={1} min={1} />
         </Field>
-        <Field label="Extra notes" className="sm:col-span-2">
+        <Field label="Extra notes" help="oNotes" className="sm:col-span-2">
           <TextArea value={notes} onChange={setNotes} rows={2} placeholder="Rush delivery, revisions policy, files needed…" />
         </Field>
       </div>

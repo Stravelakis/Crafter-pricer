@@ -223,14 +223,14 @@ export default function ResultsPanel({
           </header>
           <div className="space-y-4 p-5">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_150px]">
-              <Field label="Compare against">
+              <Field label="Compare against" help="sigBench">
                 <SelectInput
                   value={job.benchmarkId}
                   onChange={(v) => onJob({ benchmarkId: v })}
                   options={benchmarks.map((b) => ({ v: b.id, label: `${b.label}${b.custom ? " ★" : ""}` }))}
                 />
               </Field>
-              <Field label={bench ? `Job size (${bench.unit})` : "Job size"}>
+              <Field label={bench ? `Job size (${bench.unit})` : "Job size"} help="sigSize">
                 <NumInput value={job.benchmarkUnits} onChange={(n) => onJob({ benchmarkUnits: n })} suffix={bench ? bench.unit.replace("$", "") : ""} step={1} min={0} />
               </Field>
             </div>

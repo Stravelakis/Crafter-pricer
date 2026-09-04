@@ -133,6 +133,7 @@ export interface Integrations {
   cfToken: string;
   cfModel: string;
   sheetsWebhook: string;
+  sheetsFileId?: string;
   sheetsLastSync?: string;
 }
 

@@ -34,13 +34,13 @@ export function LaborSection({ settings, onPatch }: { settings: Settings; onPatc
         sub="What an hour of your hands-on time is worth — prep, finishing, packing, client chat."
       >
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Hourly wage" hint="pay yourself">
+          <Field label="Hourly wage" help="lWage" hint="pay yourself">
             <NumInput value={settings.hourlyWage} onChange={(n) => onPatch({ hourlyWage: n })} prefix="$" suffix="/h" step={1} min={0} />
           </Field>
-          <Field label="Burden" hint="benefits, payroll…">
+          <Field label="Burden" help="lBurden" hint="benefits, payroll…">
             <NumInput value={settings.laborBurdenPct} onChange={(n) => onPatch({ laborBurdenPct: n })} suffix="%" step={1} min={0} />
           </Field>
-          <Field label="Currency" className="col-span-2">
+          <Field label="Currency" help="lCurrency" className="col-span-2">
             <Seg
               options={[
                 { v: "USD" as const, label: "$ USD" },
@@ -70,27 +70,27 @@ export function BillsSection({ settings, onPatch }: { settings: Settings; onPatc
         sub="Monthly fixed costs spread across your productive hours, so every job hour carries its share."
       >
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Field label="Rent / space">
+          <Field label="Rent / space" help="bRent">
             <NumInput value={settings.rent} onChange={(n) => onPatch({ rent: n })} prefix="$" step={25} min={0} />
           </Field>
-          <Field label="Utilities">
+          <Field label="Utilities" help="bUtils">
             <NumInput value={settings.utilities} onChange={(n) => onPatch({ utilities: n })} prefix="$" step={10} min={0} />
           </Field>
-          <Field label="Software subs">
+          <Field label="Software subs" help="bSoftware">
             <NumInput value={settings.software} onChange={(n) => onPatch({ software: n })} prefix="$" step={5} min={0} />
           </Field>
-          <Field label="Insurance">
+          <Field label="Insurance" help="bInsurance">
             <NumInput value={settings.insurance} onChange={(n) => onPatch({ insurance: n })} prefix="$" step={10} min={0} />
           </Field>
-          <Field label="Other bills">
+          <Field label="Other bills" help="bOther">
             <NumInput value={settings.otherBills} onChange={(n) => onPatch({ otherBills: n })} prefix="$" step={10} min={0} />
           </Field>
-          <Field label="Electricity" hint="per kWh">
+          <Field label="Electricity" help="bKwh" hint="per kWh">
             <NumInput value={settings.electricityRate} onChange={(n) => onPatch({ electricityRate: n })} prefix="$" step={0.01} min={0} />
           </Field>
         </div>
         <div className="mt-3">
-          <Field label="Productive hours per month" hint="used to spread fixed costs">
+          <Field label="Productive hours per month" help="bBillable" hint="used to spread fixed costs">
             <NumInput value={settings.billableHours} onChange={(n) => onPatch({ billableHours: n })} suffix="h/mo" step={5} min={1} />
           </Field>
         </div>
@@ -122,11 +122,11 @@ export function TaxSection({ settings, onPatch }: { settings: Settings; onPatch:
       >
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
-            <Field label="VAT / sales tax" hint="added on invoice">
+            <Field label="VAT / sales tax" help="tVat" hint="added on invoice">
               <Slider value={settings.vatPct} onChange={(n) => onPatch({ vatPct: n })} max={30} step={0.5} />
             </Field>
             <div className="mt-4">
-              <Field label="Income tax regime">
+              <Field label="Income tax regime" help="tRegime">
                 <Seg
                   options={[
                     { v: "profit" as const, label: "On profit" },
@@ -139,14 +139,14 @@ export function TaxSection({ settings, onPatch }: { settings: Settings; onPatch:
             </div>
             {settings.regime === "profit" && (
               <div className="mt-4">
-                <Field label="Profit tax rate">
+                <Field label="Profit tax rate" help="tProfit">
                   <Slider value={settings.profitTaxPct} onChange={(n) => onPatch({ profitTaxPct: n })} max={60} />
                 </Field>
               </div>
             )}
           </div>
           <div>
-            <Field label="Presumptive brackets" hint="revenue cap → tax">
+            <Field label="Presumptive brackets" help="tBrackets" hint="revenue cap → tax">
               <div className="space-y-1.5">
                 {settings.brackets.length === 0 && (
                   <p className="border border-dashed border-line bg-card px-3 py-2 text-xs text-mute">
@@ -215,7 +215,7 @@ export function MarketingSection({ settings, onPatch }: { settings: Settings; on
         sub="Your monthly customer-acquisition budget, absorbed into the overhead rate so every job contributes."
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Marketing budget" hint="ads, fairs, samples…">
+          <Field label="Marketing budget" help="mkBudget" hint="ads, fairs, samples…">
             <NumInput value={settings.marketingMonthly} onChange={(n) => onPatch({ marketingMonthly: n })} prefix="$" suffix="/mo" step={25} min={0} />
           </Field>
           <div className="flex flex-col justify-end">
