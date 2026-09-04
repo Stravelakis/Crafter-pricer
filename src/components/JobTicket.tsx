@@ -1,15 +1,6 @@
 import type { Currency, Job, Machine, Quote } from "../types";
-import { fmtMoney } from "../lib/calc";
-import {
-  AnimatedNumber,
-  Field,
-  NumInput,
-  Reveal,
-  Seg,
-  SelectInput,
-  Slider,
-  TextInput,
-} from "./ui";
+import { convertPct, fmtMoney, fmtNum, MODE_MAX } from "../lib/calc";
+import { AnimatedNumber, Field, Icon, NumInput, Reveal, Seg, Slider, SelectInput, TextInput } from "./ui";
 
 export default function JobTicket({
   job,
@@ -26,6 +17,11 @@ export default function JobTicket({
   currency: Currency;
   onChange: (patch: Partial<Job>) => void;
 }) {
+  const switchMode = (mode: Job["marginMode"]) => {
+    if (mode === job.marginMode) return;
+    onChange({ marginMode: mode, marginPct: convertPct(job.marginPct, job.marginMode) });
+  };
+
   return (
     <Reveal delay={60}>
       <section className="panel overflow-hidden">
@@ -51,48 +47,28 @@ export default function JobTicket({
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Machine" className="col-span-2">
+            <Field label="Machine" hint="focuses the fleet panel" className="col-span-2">
               <SelectInput
                 value={machine?.id ?? ""}
                 onChange={(v) => onChange({ machineId: v })}
                 options={
                   machines.length
-                    ? machines.map((m) => ({ v: m.id, label: m.name || "Unnamed machine" }))
+                    ? [{ v: "", label: "— no machine (labor only) —" }, ...machines.map((m) => ({ v: m.id, label: m.name || "Unnamed machine" }))]
                     : [{ v: "", label: "— add a machine in section 01 —" }]
                 }
               />
             </Field>
             <Field label="Machine time" hint="per unit">
-              <NumInput
-                value={job.machineHours}
-                onChange={(n) => onChange({ machineHours: n })}
-                suffix="h"
-                step={0.25}
-              />
+              <NumInput value={job.machineHours} onChange={(n) => onChange({ machineHours: n })} suffix="h" step={0.25} min={0} />
             </Field>
             <Field label="Labor time" hint="per unit">
-              <NumInput
-                value={job.laborHours}
-                onChange={(n) => onChange({ laborHours: n })}
-                suffix="h"
-                step={0.25}
-              />
+              <NumInput value={job.laborHours} onChange={(n) => onChange({ laborHours: n })} suffix="h" step={0.25} min={0} />
             </Field>
             <Field label="Materials" hint="per unit">
-              <NumInput
-                value={job.materialCost}
-                onChange={(n) => onChange({ materialCost: n })}
-                prefix="$"
-                step={0.5}
-              />
+              <NumInput value={job.materialCost} onChange={(n) => onChange({ materialCost: n })} prefix="$" step={0.5} min={0} />
             </Field>
             <Field label="Setup / prep fee" hint="whole order">
-              <NumInput
-                value={job.setupFee}
-                onChange={(n) => onChange({ setupFee: n })}
-                prefix="$"
-                step={1}
-              />
+              <NumInput value={job.setupFee} onChange={(n) => onChange({ setupFee: n })} prefix="$" step={1} min={0} />
             </Field>
             <Field label="Quantity">
               <NumInput
@@ -103,43 +79,46 @@ export default function JobTicket({
                 min={1}
               />
             </Field>
-            <div className="flex flex-col justify-end">
+            <div className="flex flex-col justify-end pb-0.5">
               <div className="flex items-baseline justify-between border border-line bg-card px-3 py-2">
-                <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-mute">
-                  Machine rate
-                </span>
-                <span key={quote.machineRate} className="tick-flash font-mono text-xs font-semibold text-ink">
-                  {fmtMoney(quote.machineRate, currency)}
-                  <span className="text-mute">/hr</span>
-                </span>
+                <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-mute">Machine rate</span>
+                <AnimatedNumber
+                  value={quote.machineRate}
+                  format={(n) => `${fmtMoney(n, currency)}/h`}
+                  className="font-mono text-xs font-semibold text-ink"
+                />
               </div>
             </div>
           </div>
 
           <div className="border-t border-dashed border-line pt-4">
             <div className="mb-2 flex items-center justify-between gap-3">
-              <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-mute">
-                Profit model
-              </span>
+              <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-mute">Profit model</span>
               <Seg
                 options={[
                   { v: "margin" as const, label: "Margin" },
                   { v: "markup" as const, label: "Markup" },
                 ]}
                 value={job.marginMode}
-                onChange={(v) => onChange({ marginMode: v })}
+                onChange={switchMode}
               />
             </div>
-            <Slider value={job.marginPct} onChange={(n) => onChange({ marginPct: n })} max={95} />
+            <Slider
+              value={job.marginPct}
+              onChange={(n) => onChange({ marginPct: n })}
+              max={MODE_MAX[job.marginMode]}
+              step={job.marginMode === "markup" ? 5 : 1}
+            />
             <p className="mt-2 text-xs leading-relaxed text-mute">
               {job.marginMode === "margin"
                 ? "Margin on price — profit as a share of what the customer pays."
-                : "Markup on cost — profit stacked on top of your true cost."}
+                : "Markup on cost — profit stacked on top of your true cost. Switching modes keeps the same price."}
             </p>
           </div>
 
           <div className="flex items-center justify-between bg-ink px-4 py-3">
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/60">
+            <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-paper/60">
+              <Icon name="zap" className="h-3.5 w-3.5 text-ember" />
               True all-in cost
             </span>
             <AnimatedNumber

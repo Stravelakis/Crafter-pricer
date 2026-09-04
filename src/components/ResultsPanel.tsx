@@ -1,6 +1,6 @@
 import type { Benchmark, Currency, Job, Quote } from "../types";
 import { fmtMoney, fmtNum } from "../lib/calc";
-import { AnimatedNumber, Field, Icon, NumInput, Reveal, SelectInput } from "./ui";
+import { AnimatedNumber, Field, Icon, Noise, NumInput, Reveal, SelectInput, ShinyText } from "./ui";
 
 function Row({
   label,
@@ -9,6 +9,7 @@ function Row({
   cur,
   strong = false,
   negative = false,
+  prefix = "",
 }: {
   label: string;
   sub?: string;
@@ -16,17 +17,17 @@ function Row({
   cur: Currency;
   strong?: boolean;
   negative?: boolean;
+  prefix?: string;
 }) {
   return (
     <div className="ledger-row py-[5px]">
       <div className="min-w-0">
-        <div className={`text-[13px] leading-tight ${strong ? "font-semibold text-ink" : "text-ink-2"}`}>
-          {label}
-        </div>
+        <div className={`text-[13px] leading-tight ${strong ? "font-semibold text-ink" : "text-ink-2"}`}>{label}</div>
         {sub && <div className="font-mono text-[10px] text-mute">{sub}</div>}
       </div>
       <div className="dots" />
       <div className={`shrink-0 font-mono text-sm ${strong ? "font-semibold text-ink" : negative ? "text-danger" : "text-ink-2"}`}>
+        {prefix}
         {fmtMoney(value, cur)}
       </div>
     </div>
@@ -70,6 +71,7 @@ export default function ResultsPanel({
   benchmarks,
   onJob,
   onTarget,
+  onOffer,
 }: {
   quote: Quote;
   job: Job;
@@ -78,6 +80,7 @@ export default function ResultsPanel({
   benchmarks: Benchmark[];
   onJob: (patch: Partial<Job>) => void;
   onTarget: (totalTarget: number) => void;
+  onOffer: () => void;
 }) {
   const units = Math.max(0, job.benchmarkUnits || 0);
   const mLow = bench ? bench.low * units : 0;
@@ -105,12 +108,8 @@ export default function ResultsPanel({
         <section className="panel overflow-hidden">
           <header className="flex items-center gap-3 border-b border-line bg-card px-5 py-3.5">
             <Icon name="receipt" className="h-5 w-5 text-ink-2" />
-            <h3 className="font-display text-sm font-bold uppercase tracking-[0.1em] text-ink">
-              Cost ledger
-            </h3>
-            <span className="ml-auto font-mono text-[10px] uppercase tracking-widest text-mute">
-              per unit
-            </span>
+            <h3 className="font-display text-sm font-bold uppercase tracking-[0.1em] text-ink">Cost ledger</h3>
+            <span className="ml-auto font-mono text-[10px] uppercase tracking-widest text-mute">per unit</span>
           </header>
           <div className="px-5 py-4">
             <Row label="Materials" value={quote.uMaterials} cur={currency} />
@@ -132,19 +131,14 @@ export default function ResultsPanel({
               value={quote.uOverhead}
               cur={currency}
             />
-            <Row
-              label="Setup / file prep"
-              sub={`amortized over ${quote.qty} pcs`}
-              value={quote.uSetup}
-              cur={currency}
-            />
+            <Row label="Setup / file prep" sub={`amortized over ${quote.qty} pcs`} value={quote.uSetup} cur={currency} />
             <div className="my-2 border-t border-line" />
             <Row label="True cost per unit" value={quote.unitCost} cur={currency} strong />
-            <Row
-              label={`× ${quote.qty} unit${quote.qty > 1 ? "s" : ""} — total cost`}
-              value={quote.totalCost}
-              cur={currency}
-            />
+            <Row label={`× ${quote.qty} unit${quote.qty > 1 ? "s" : ""} — total cost`} value={quote.totalCost} cur={currency} />
+            <div className="my-2 border-t border-line" />
+            <Row label="Subtotal (net)" value={quote.totalPrice} cur={currency} strong />
+            <Row label={`VAT / sales tax (${fmtNum(quote.vatPct, 1)}%)`} value={quote.vat} cur={currency} />
+            <Row label="Invoice total" value={quote.invoiceTotal} cur={currency} strong />
           </div>
         </section>
       </Reveal>
@@ -152,37 +146,40 @@ export default function ResultsPanel({
       {/* ------- price hero ------- */}
       <Reveal delay={140}>
         <section className="panel-dark relative overflow-hidden p-5">
+          <Noise opacity={0.09} />
           <span
             key={`${job.marginMode}-${Math.round(job.marginPct)}`}
-            className="stamp-in absolute right-4 top-4 border-2 border-dashed border-ember px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ember"
+            className="stamp-in absolute right-4 top-4 z-10 border-2 border-dashed border-ember px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-ember"
           >
-            cost+{job.marginMode === "margin" ? "margin" : "markup"} {Math.round(job.marginPct)}%
+            cost+{job.marginMode} {Math.round(job.marginPct)}%
           </span>
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-paper/55">
-            Your price · per unit
+          <p className="relative font-mono text-[10px] uppercase tracking-[0.22em] text-paper/55">
+            <ShinyText text="Your price · per unit" />
           </p>
           <AnimatedNumber
             value={quote.unitPrice}
             format={(n) => fmtMoney(n, currency)}
-            className="mt-1 block font-display text-5xl font-bold leading-none tracking-tight text-paper"
+            className="relative mt-1 block font-display text-5xl font-bold leading-none tracking-tight text-paper"
           />
-          <p className="mt-2 font-mono text-xs text-paper/65">
+          <p className="relative mt-2 font-mono text-xs text-paper/65">
             order total{" "}
             <AnimatedNumber
               value={quote.totalPrice}
               format={(n) => fmtMoney(n, currency)}
               className="font-semibold text-paper"
             />{" "}
-            · {quote.qty} pcs
+            · invoice {fmtMoney(quote.invoiceTotal, currency)}
           </p>
-          <div className="mt-4 space-y-1 border-t border-paper/15 pt-3">
+          <div className="relative mt-4 space-y-1 border-t border-paper/15 pt-3">
             <div className="ledger-row">
-              <span className="text-[13px] text-paper/80">Profit</span>
+              <span className="text-[13px] text-paper/80">Profit (net of VAT)</span>
               <span className="dots !border-paper/25" />
               <span className="font-mono text-sm text-paper">{fmtMoney(quote.profit, currency)}</span>
             </div>
             <div className="ledger-row">
-              <span className="text-[13px] text-paper/60">Tax on profit</span>
+              <span className="text-[13px] text-paper/60">
+                {quote.regime === "presumptive" ? "Presumptive tax on revenue" : "Profit tax"}
+              </span>
               <span className="dots !border-paper/25" />
               <span className="font-mono text-sm text-paper/70">−{fmtMoney(quote.tax, currency)}</span>
             </div>
@@ -192,26 +189,27 @@ export default function ResultsPanel({
               <span className="font-mono text-sm font-bold text-ember">{fmtMoney(quote.net, currency)}</span>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-1">
+          <div className="relative mt-4 grid grid-cols-2 gap-1">
             <div className="flex items-baseline justify-between gap-2 bg-paper/5 px-3 py-2">
-              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-paper/50">
-                Your wage, after tax
-              </span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-paper/50">Wage, after tax</span>
               <AnimatedNumber
                 value={quote.effWage}
                 format={(n) => `${fmtMoney(n, currency)}/h`}
-                className="font-mono text-xs font-semibold text-teal brightness-150"
+                className="font-mono text-xs font-semibold text-ember brightness-150"
               />
             </div>
             <div className="flex items-baseline justify-between gap-2 bg-paper/5 px-3 py-2">
-              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-paper/50">
-                Active hours
-              </span>
-              <span className="font-mono text-xs font-semibold text-paper">
-                {fmtNum(quote.activeHours)} h
-              </span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-paper/50">Active hours</span>
+              <span className="font-mono text-xs font-semibold text-paper">{fmtNum(quote.activeHours)} h</span>
             </div>
           </div>
+          <button
+            onClick={onOffer}
+            className="relative mt-4 flex w-full items-center justify-center gap-2 border border-paper/30 px-4 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-paper transition-all hover:border-ember hover:bg-ember hover:text-paper active:translate-y-px"
+          >
+            <Icon name="receipt" className="h-4 w-4" />
+            Write offer letter (.md)
+          </button>
         </section>
       </Reveal>
 
@@ -220,12 +218,8 @@ export default function ResultsPanel({
         <section className="panel overflow-hidden">
           <header className="flex items-center gap-3 border-b border-line bg-card px-5 py-3.5">
             <Icon name="target" className="h-5 w-5 text-ink-2" />
-            <h3 className="font-display text-sm font-bold uppercase tracking-[0.1em] text-ink">
-              Market signal
-            </h3>
-            <span className="ml-auto font-mono text-[10px] uppercase tracking-widest text-mute">
-              order total
-            </span>
+            <h3 className="font-display text-sm font-bold uppercase tracking-[0.1em] text-ink">Market signal</h3>
+            <span className="ml-auto font-mono text-[10px] uppercase tracking-widest text-mute">order total</span>
           </header>
           <div className="space-y-4 p-5">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_150px]">
@@ -233,19 +227,11 @@ export default function ResultsPanel({
                 <SelectInput
                   value={job.benchmarkId}
                   onChange={(v) => onJob({ benchmarkId: v })}
-                  options={benchmarks.map((b) => ({
-                    v: b.id,
-                    label: `${b.label}${b.custom ? "  ★" : ""}`,
-                  }))}
+                  options={benchmarks.map((b) => ({ v: b.id, label: `${b.label}${b.custom ? " ★" : ""}` }))}
                 />
               </Field>
               <Field label={bench ? `Job size (${bench.unit})` : "Job size"}>
-                <NumInput
-                  value={job.benchmarkUnits}
-                  onChange={(n) => onJob({ benchmarkUnits: n })}
-                  suffix={bench ? bench.unit.replace("$", "") : ""}
-                  step={1}
-                />
+                <NumInput value={job.benchmarkUnits} onChange={(n) => onJob({ benchmarkUnits: n })} suffix={bench ? bench.unit.replace("$", "") : ""} step={1} min={0} />
               </Field>
             </div>
 
@@ -272,7 +258,7 @@ export default function ResultsPanel({
                     {status === "in" &&
                       `In market range — ${fmtNum(Math.abs(delta), 0)}% ${delta >= 0 ? "above" : "below"} the researched midpoint. Competitive and defensible.`}
                     {status === "premium" &&
-                      `Premium — above the typical band. Back it with turnaround, finish quality or service.`}
+                      "Premium — above the typical band. Back it with turnaround, finish quality or service."}
                   </span>
                 </div>
                 <div>
@@ -302,8 +288,8 @@ export default function ResultsPanel({
               </>
             ) : (
               <p className="border border-dashed border-line bg-card px-4 py-5 text-xs leading-relaxed text-mute">
-                Pick a benchmark to see how your price sits against researched market rates — or add
-                your own findings in Market Intel below.
+                Pick a benchmark to see how your price sits against researched market rates — or add your own
+                findings in Competitor Research / Market Intel.
               </p>
             )}
           </div>

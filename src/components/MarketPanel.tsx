@@ -41,7 +41,7 @@ export default function MarketPanel({
   return (
     <Reveal delay={160}>
       <Section
-        num="05"
+        num="03"
         icon="chart"
         title="Market intel"
         sub="Typical street rates for maker services, plus a log for the prices you research yourself. Use a row as the benchmark in the Market Signal panel."

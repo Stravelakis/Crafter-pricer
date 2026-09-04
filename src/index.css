@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Chakra Petch", "IBM Plex Sans", sans-serif;
+  --font-display: "Space Grotesk", "IBM Plex Sans", sans-serif;
   --font-sans: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
@@ -184,6 +184,46 @@ input[type="number"] {
 }
 .tick-flash {
   animation: tick-up 0.7s ease-out both;
+}
+
+/* reactbits-style shiny text sweep */
+.shiny-text {
+  background-image: linear-gradient(
+    100deg,
+    rgba(241, 239, 232, 0.75) 42%,
+    #ffbe93 50%,
+    rgba(241, 239, 232, 0.75) 58%
+  );
+  background-size: 220% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shiny-sweep 3.4s linear infinite;
+}
+@keyframes shiny-sweep {
+  to {
+    background-position: -220% center;
+  }
+}
+
+@keyframes modal-in-kf {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+.modal-in {
+  animation: modal-in-kf 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes toast-in-kf {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+.toast-in {
+  animation: toast-in-kf 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* thin scrollbars */

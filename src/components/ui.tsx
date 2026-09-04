@@ -1,35 +1,350 @@
 import {
   useEffect,
+  useId,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
-  type Dispatch,
   type ReactNode,
-  type SetStateAction,
 } from "react";
 
-/* ---------------- hooks ---------------- */
+/* ---------------- icons (inline SVG) ---------------- */
 
-export function useLocalStorage<T>(
-  key: string,
-  initial: T,
-): [T, Dispatch<SetStateAction<T>>] {
-  const [value, setValue] = useState<T>(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw !== null ? (JSON.parse(raw) as T) : initial;
-    } catch {
-      return initial;
-    }
-  });
+export type IconName =
+  | "printer" | "layers" | "uv" | "laser" | "zap" | "dollar" | "clock" | "user"
+  | "home" | "percent" | "chart" | "search" | "plus" | "trash" | "sparkle"
+  | "image" | "globe" | "sheet" | "download" | "copy" | "check" | "x" | "link"
+  | "megaphone" | "cog" | "target" | "alert" | "arrow" | "wand" | "receipt";
+
+const ICONS: Record<IconName, ReactNode> = {
+  printer: (
+    <>
+      <path d="M6 9V3h12v6" />
+      <rect x="4" y="9" width="16" height="8" rx="1" />
+      <path d="M7 14h10v7H7z" />
+      <circle cx="17.4" cy="11.6" r="0.6" fill="currentColor" stroke="none" />
+    </>
+  ),
+  layers: (
+    <>
+      <path d="M12 3l9 5-9 5-9-5 9-5z" />
+      <path d="M3 13l9 5 9-5" />
+      <path d="M3 17.5l9 5 9-5" opacity="0.5" />
+    </>
+  ),
+  uv: (
+    <>
+      <rect x="3" y="7" width="18" height="12" rx="1" />
+      <path d="M7 7V4h10v3" />
+      <path d="M3 12h18" opacity="0.55" />
+      <circle cx="12" cy="15" r="1.6" />
+    </>
+  ),
+  laser: (
+    <>
+      <path d="M4 5h16" />
+      <path d="M12 5v4" />
+      <path d="M12 9l-6.5 10M12 9l6.5 10M12 9v10" opacity="0.8" />
+      <circle cx="12" cy="9" r="1.4" />
+    </>
+  ),
+  zap: <path d="M13 2L4.5 13.5H11L9.5 22 19 10h-6.5L13 2z" />,
+  dollar: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M15 9.2c-.6-1-1.7-1.4-3-1.4-1.8 0-3 .9-3 2.3 0 3.2 6 1.6 6 4.8 0 1.4-1.3 2.3-3 2.3-1.4 0-2.6-.6-3.2-1.6M12 6v2m0 10v-1.5" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3.5 2" />
+    </>
+  ),
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 21c.8-3.8 3.9-6 7.5-6s6.7 2.2 7.5 6" />
+    </>
+  ),
+  home: (
+    <>
+      <path d="M3.5 11L12 3.5 20.5 11" />
+      <path d="M5.5 10v10h13V10" />
+      <path d="M10 20v-5h4v5" />
+    </>
+  ),
+  percent: (
+    <>
+      <path d="M19 5L5 19" />
+      <circle cx="7" cy="7" r="2.6" />
+      <circle cx="17" cy="17" r="2.6" />
+    </>
+  ),
+  chart: (
+    <>
+      <path d="M4 20V4" />
+      <path d="M4 20h16" />
+      <path d="M8 16v-5M12 16V7M16 16v-3M20 16V9" />
+    </>
+  ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M16 16l5 5" />
+    </>
+  ),
+  plus: <path d="M12 5v14M5 12h14" />,
+  trash: (
+    <>
+      <path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13" />
+      <path d="M10 11v5M14 11v5" />
+    </>
+  ),
+  sparkle: (
+    <>
+      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
+      <path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z" opacity="0.7" />
+    </>
+  ),
+  image: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="1" />
+      <circle cx="8.5" cy="10" r="1.6" />
+      <path d="M3.5 17l5-5 4 4 3-3 5 4" />
+    </>
+  ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.8 2.7 4 5.7 4 9s-1.2 6.3-4 9c-2.8-2.7-4-5.7-4-9s1.2-6.3 4-9z" />
+    </>
+  ),
+  sheet: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="1" />
+      <path d="M4 9h16M4 15h16M10 3v18" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5" />
+      <path d="M4 20h16" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="8" y="8" width="12" height="12" rx="1" />
+      <path d="M5 16H4V4h12v1" />
+    </>
+  ),
+  check: <path d="M4.5 12.5l5 5L19.5 7" />,
+  x: <path d="M6 6l12 12M18 6L6 18" />,
+  link: (
+    <>
+      <path d="M10 14a4.5 4.5 0 006.4 0l3-3a4.5 4.5 0 00-6.4-6.4l-1.4 1.4" />
+      <path d="M14 10a4.5 4.5 0 00-6.4 0l-3 3a4.5 4.5 0 006.4 6.4l1.4-1.4" />
+    </>
+  ),
+  megaphone: (
+    <>
+      <path d="M3 11v3l4 .8L19 19V6L7 10.2 3 11z" />
+      <path d="M7 15l1 4h3l-1-4" />
+      <path d="M19 10h2v5h-2" opacity="0.6" />
+    </>
+  ),
+  cog: (
+    <>
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1" />
+    </>
+  ),
+  target: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    </>
+  ),
+  alert: (
+    <>
+      <path d="M12 3.5L2.5 20h19L12 3.5z" />
+      <path d="M12 10v4.5" />
+      <circle cx="12" cy="17.2" r="0.7" fill="currentColor" stroke="none" />
+    </>
+  ),
+  arrow: <path d="M4 12h15m-6-6l6 6-6 6" />,
+  wand: (
+    <>
+      <path d="M4 20L14.5 9.5" />
+      <path d="M15 3l.9 2.4L18.3 6l-2.4.9L15 9.3l-.9-2.4L11.7 6l2.4-.6L15 3z" />
+      <path d="M20 11l.6 1.6 1.6.6-1.6.6L20 15.4l-.6-1.6-1.6-.6 1.6-.6L20 11z" opacity="0.7" />
+    </>
+  ),
+  receipt: (
+    <>
+      <path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21V3z" />
+      <path d="M9 8h6M9 12h6M9 16h4" />
+    </>
+  ),
+};
+
+export function Icon({
+  name,
+  className = "h-5 w-5",
+  sw = 1.7,
+}: {
+  name: IconName;
+  className?: string;
+  sw?: number;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={sw}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      {ICONS[name]}
+    </svg>
+  );
+}
+
+/* ---------------- reactbits-style animation primitives ---------------- */
+
+export function Noise({ opacity = 0.07, className = "" }: { opacity?: number; className?: string }) {
+  const id = useId().replace(/[:]/g, "");
+  return (
+    <svg aria-hidden className={`pointer-events-none absolute inset-0 h-full w-full ${className}`} style={{ opacity }}>
+      <filter id={`n${id}`}>
+        <feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="3" stitchTiles="stitch" />
+        <feColorMatrix type="saturate" values="0" />
+      </filter>
+      <rect width="100%" height="100%" filter={`url(#n${id})`} />
+    </svg>
+  );
+}
+
+const SCRAMBLE_CHARS = "!<>-_\\/[]{}—=+*^?#________";
+
+export function ScrambleText({ text, className = "" }: { text: string; className?: string }) {
+  const [display, setDisplay] = useState(text);
   useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-      /* storage unavailable — keep running in-memory */
-    }
-  }, [key, value]);
-  return [value, setValue];
+    let frame = 0;
+    const id = window.setInterval(() => {
+      frame++;
+      const progress = frame / 1.9;
+      if (progress >= text.length) {
+        setDisplay(text);
+        window.clearInterval(id);
+        return;
+      }
+      setDisplay(
+        text
+          .split("")
+          .map((c, i) =>
+            i < progress ? c : c === " " ? " " : SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)],
+          )
+          .join(""),
+      );
+    }, 30);
+    return () => window.clearInterval(id);
+  }, [text]);
+  return <span className={className}>{display}</span>;
+}
+
+export function ShinyText({ text, className = "" }: { text: string; className?: string }) {
+  return <span className={`shiny-text ${className}`}>{text}</span>;
+}
+
+export function Spinner({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={`animate-spin ${className}`} fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2.5" />
+      <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  wide = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: ReactNode;
+  children: ReactNode;
+  wide?: boolean;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const fn = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [open, onClose]);
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center p-4">
+      <button aria-label="Close" onClick={onClose} className="absolute inset-0 cursor-default bg-ink/60" />
+      <div
+        className={`modal-in panel relative max-h-[88vh] w-full overflow-y-auto ${wide ? "max-w-3xl" : "max-w-xl"}`}
+      >
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-panel px-5 py-3">
+          <h3 className="font-display text-sm font-bold uppercase tracking-[0.12em] text-ink">{title}</h3>
+          <button
+            onClick={onClose}
+            className="grid h-7 w-7 place-items-center border border-line text-mute transition-all hover:border-danger hover:text-danger"
+          >
+            <Icon name="x" className="h-4 w-4" sw={2.2} />
+          </button>
+        </header>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- layout primitives ---------------- */
+
+export function Section({
+  num,
+  icon,
+  title,
+  sub,
+  children,
+  accent = false,
+}: {
+  num: string;
+  icon: IconName;
+  title: string;
+  sub?: string;
+  children: ReactNode;
+  accent?: boolean;
+}) {
+  return (
+    <section className="panel overflow-hidden">
+      <header
+        className={`flex items-center gap-3 border-b border-line px-5 py-3.5 ${accent ? "bg-ember text-paper" : "bg-card"}`}
+      >
+        <span className={`font-mono text-[11px] font-semibold ${accent ? "text-paper/70" : "text-ember"}`}>{num}</span>
+        <Icon name={icon} className={`h-5 w-5 ${accent ? "text-paper" : "text-ink-2"}`} />
+        <div className="min-w-0">
+          <h3 className={`font-display text-base font-bold uppercase tracking-[0.08em] leading-tight ${accent ? "text-paper" : "text-ink"}`}>
+            {title}
+          </h3>
+          {sub && <p className={`truncate text-[11px] leading-tight ${accent ? "text-paper/70" : "text-mute"}`}>{sub}</p>}
+        </div>
+      </header>
+      <div className="p-5">{children}</div>
+    </section>
+  );
 }
 
 export function Reveal({
@@ -46,9 +361,13 @@ export function Reveal({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setOn(true);
+      return;
+    }
     const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
+      (es) => {
+        if (es[0].isIntersecting) {
           setOn(true);
           io.disconnect();
         }
@@ -59,161 +378,9 @@ export function Reveal({
     return () => io.disconnect();
   }, []);
   return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={`reveal ${on ? "reveal-on" : ""} ${className}`}
-    >
+    <div ref={ref} className={`reveal ${on ? "reveal-on" : ""} ${className}`} style={{ transitionDelay: `${delay}ms` }}>
       {children}
     </div>
-  );
-}
-
-const roundSmart = (n: number) => Math.round(n * 1000) / 1000;
-
-export function AnimatedNumber({
-  value,
-  format,
-  className = "",
-}: {
-  value: number;
-  format: (n: number) => string;
-  className?: string;
-}) {
-  const [disp, setDisp] = useState(value);
-  const prev = useRef(value);
-  useEffect(() => {
-    const from = prev.current;
-    const to = value;
-    prev.current = value;
-    if (!Number.isFinite(to) || Math.abs(to - from) < 1e-9) {
-      setDisp(to);
-      return;
-    }
-    const t0 = performance.now();
-    const dur = 420;
-    let raf = 0;
-    const step = (t: number) => {
-      const p = Math.min(1, (t - t0) / dur);
-      const e = 1 - Math.pow(1 - p, 3);
-      setDisp(from + (to - from) * e);
-      if (p < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [value]);
-  return <span className={className}>{format(Number.isFinite(disp) ? disp : 0)}</span>;
-}
-
-/* ---------------- icons ---------------- */
-
-const PATHS = {
-  spark: ["M12 3v18", "M3 12h18", "M6 6l12 12", "M18 6L6 18"],
-  fdm: ["M3 5h18", "M7 5v4h10V5", "M10 9v2l-2 3h8l-2-3V9", "M5 19h14", "M12 14v2"],
-  layers: ["M12 3l9 4.5-9 4.5-9-4.5z", "M3 12.5l9 4.5 9-4.5", "M3 17l9 4.5 9-4.5"],
-  uv: ["M6 8h12v9H6z", "M9 8V5", "M15 8V5", "M9 17v2", "M15 17v2", "M3 12.5h3", "M18 12.5h3", "M9.5 12.5h5"],
-  engrave: ["M4 4h16", "M12 4v5", "M8 9h8", "M12 9l-5 11", "M12 9l5 11", "M4 20h16"],
-  laser: ["M3 4h18", "M12 4v7", "M6 20h12", "M12 11l-4 9", "M12 11l4 9", "M12 11v9"],
-  cnc: ["M12 3v4", "M8 7h8v4l-2 7h-4l-2-7z", "M12 18v3"],
-  gear: [
-    "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7",
-    "M12 2.5v3",
-    "M12 18.5v3",
-    "M2.5 12h3",
-    "M18.5 12h3",
-    "M5 5l2.1 2.1",
-    "M16.9 16.9L19 19",
-    "M19 5l-2.1 2.1",
-    "M7.1 16.9L5 19",
-  ],
-  wrench: [
-    "M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z",
-  ],
-  bolt: ["M13 2 3 14h9l-1 8 10-12h-9l1-8z"],
-  tag: ["M12.6 2.6 21 11a2 2 0 0 1 0 2.8l-7.2 7.2a2 2 0 0 1-2.8 0L2.6 12.6A2 2 0 0 1 2 11.2V4a2 2 0 0 1 2-2h7.2a2 2 0 0 1 1.4.6z", "M7.5 7.5h.01"],
-  coins: ["M8 9.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11", "M11.8 3.6A5.5 5.5 0 1 1 20 10.9", "M6 15h4"],
-  clock: ["M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18", "M12 7v5l3.5 2"],
-  user: ["M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8", "M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"],
-  home: ["M3 11.5 12 4l9 7.5", "M5.5 10v9.5h13V10", "M10 19.5v-5h4v5"],
-  megaphone: ["m3 11 18-5v12L3 14v-3z", "M11.6 16.8a3 3 0 1 1-5.8-1.6"],
-  percent: ["M19 5 5 19", "M6.5 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5", "M17.5 20a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"],
-  chart: ["M3 3v18h18", "M7.5 14v3.5", "M12 9v8.5", "M16.5 12v5.5"],
-  plus: ["M12 5v14", "M5 12h14"],
-  trash: ["M3 6h18", "M8 6V4h8v2", "M19 6l-1 14H6L5 6", "M10 11v5", "M14 11v5"],
-  link: ["M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7", "M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"],
-  check: ["M20 6 9 17l-5-5"],
-  alert: ["M12 3 2 20h20L12 3z", "M12 10v4", "M12 17.5h.01"],
-  target: ["M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18", "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8", "M12 12h.01"],
-  receipt: ["M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z", "M9 8h6", "M9 12h6"],
-} as const;
-
-export type IconName = keyof typeof PATHS;
-
-export function Icon({
-  name,
-  className = "h-4 w-4",
-  sw = 1.8,
-}: {
-  name: IconName;
-  className?: string;
-  sw?: number;
-}) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={sw}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      {(PATHS[name] as readonly string[]).map((d, i) => (
-        <path key={i} d={d} />
-      ))}
-    </svg>
-  );
-}
-
-/* ---------------- primitives ---------------- */
-
-export function Section({
-  num,
-  title,
-  sub,
-  icon,
-  children,
-  right,
-  className = "",
-}: {
-  num: string;
-  title: string;
-  sub?: string;
-  icon: IconName;
-  children: ReactNode;
-  right?: ReactNode;
-  className?: string;
-}) {
-  return (
-    <section className={`panel overflow-hidden ${className}`}>
-      <header className="flex flex-wrap items-center gap-3 border-b border-line bg-card px-5 py-4">
-        <span className="grid h-9 w-9 shrink-0 place-items-center bg-ink font-mono text-xs font-semibold text-ember">
-          {num}
-        </span>
-        <span className="text-ink-2">
-          <Icon name={icon} className="h-5 w-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display text-base font-bold uppercase tracking-[0.08em] text-ink">
-            {title}
-          </h2>
-          {sub && <p className="mt-0.5 text-xs leading-snug text-mute">{sub}</p>}
-        </div>
-        {right}
-      </header>
-      <div className="p-5">{children}</div>
-    </section>
   );
 }
 
@@ -229,21 +396,18 @@ export function Field({
   className?: string;
 }) {
   return (
-    <label className={`block min-w-0 ${className}`}>
+    <label className={`block ${className}`}>
       <span className="mb-1 flex items-baseline justify-between gap-2">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-mute">
-          {label}
-        </span>
-        {hint && (
-          <span className="truncate font-mono text-[10px] text-mute/70">{hint}</span>
-        )}
+        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-mute">{label}</span>
+        {hint && <span className="truncate font-mono text-[9px] text-line">{hint}</span>}
       </span>
       {children}
     </label>
   );
 }
 
-const fmtInput = (n: number) => String(roundSmart(n));
+const inputCls =
+  "w-full border border-line bg-card px-3 py-2 font-mono text-sm text-ink transition-all outline-none placeholder:text-line focus:border-ember focus:ring-2 focus:ring-ember/20";
 
 export function NumInput({
   value,
@@ -251,8 +415,7 @@ export function NumInput({
   prefix,
   suffix,
   step = 1,
-  min = 0,
-  className = "",
+  min,
 }: {
   value: number;
   onChange: (n: number) => void;
@@ -260,42 +423,32 @@ export function NumInput({
   suffix?: string;
   step?: number;
   min?: number;
-  className?: string;
 }) {
-  const [txt, setTxt] = useState(() => fmtInput(value));
-  const focused = useRef(false);
+  const [txt, setTxt] = useState<string>(String(value));
   useEffect(() => {
-    if (!focused.current) setTxt(fmtInput(value));
+    setTxt((prev) => {
+      const p = parseFloat(prev.replace(",", "."));
+      return Number.isFinite(p) && Math.abs(p - value) < 1e-9 ? prev : String(value);
+    });
   }, [value]);
+  const commit = (s: string) => {
+    setTxt(s);
+    const n = parseFloat(s.replace(",", "."));
+    if (Number.isFinite(n)) onChange(min !== undefined ? Math.max(min, n) : n);
+    else if (s === "" && min === undefined) onChange(0);
+  };
   return (
-    <div
-      className={`flex items-center border border-line bg-card transition focus-within:border-ember focus-within:ring-2 focus-within:ring-ember/20 hover:border-ink/30 ${className}`}
-    >
-      {prefix && (
-        <span className="select-none pl-2.5 font-mono text-xs text-mute">{prefix}</span>
-      )}
+    <div className="flex items-stretch overflow-hidden border border-line bg-card transition-all focus-within:border-ember focus-within:ring-2 focus-within:ring-ember/20">
+      {prefix && <span className="grid select-none place-items-center border-r border-line bg-paper px-2 font-mono text-xs text-mute">{prefix}</span>}
       <input
         type="number"
         inputMode="decimal"
         step={step}
-        min={min}
         value={txt}
-        onFocus={() => (focused.current = true)}
-        onBlur={() => {
-          focused.current = false;
-          setTxt(fmtInput(value));
-        }}
-        onChange={(e) => {
-          const t = e.target.value;
-          setTxt(t);
-          const n = parseFloat(t);
-          if (Number.isFinite(n)) onChange(roundSmart(Math.max(min, n)));
-        }}
-        className="w-full min-w-0 bg-transparent px-2.5 py-2 text-right font-mono text-sm text-ink outline-none"
+        onChange={(e) => commit(e.target.value)}
+        className="w-full min-w-0 bg-transparent px-2.5 py-2 font-mono text-sm text-ink outline-none"
       />
-      {suffix && (
-        <span className="select-none pr-2.5 font-mono text-xs text-mute">{suffix}</span>
-      )}
+      {suffix && <span className="grid select-none place-items-center border-l border-line bg-paper px-2 font-mono text-xs text-mute">{suffix}</span>}
     </div>
   );
 }
@@ -304,12 +457,10 @@ export function TextInput({
   value,
   onChange,
   placeholder,
-  className = "",
 }: {
   value: string;
-  onChange: (v: string) => void;
+  onChange: (s: string) => void;
   placeholder?: string;
-  className?: string;
 }) {
   return (
     <input
@@ -317,7 +468,31 @@ export function TextInput({
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className={`w-full border border-line bg-card px-3 py-2 text-sm text-ink outline-none transition placeholder:text-mute/60 hover:border-ink/30 focus:border-ember focus:ring-2 focus:ring-ember/20 ${className}`}
+      className={inputCls}
+    />
+  );
+}
+
+export function TextArea({
+  value,
+  onChange,
+  placeholder,
+  rows = 3,
+  mono = false,
+}: {
+  value: string;
+  onChange: (s: string) => void;
+  placeholder?: string;
+  rows?: number;
+  mono?: boolean;
+}) {
+  return (
+    <textarea
+      value={value}
+      placeholder={placeholder}
+      rows={rows}
+      onChange={(e) => onChange(e.target.value)}
+      className={`${inputCls} resize-y ${mono ? "text-xs leading-relaxed" : ""}`}
     />
   );
 }
@@ -326,36 +501,52 @@ export function SelectInput({
   value,
   onChange,
   options,
-  className = "",
 }: {
   value: string;
-  onChange: (v: string) => void;
+  onChange: (s: string) => void;
   options: { v: string; label: string }[];
-  className?: string;
 }) {
   return (
-    <div className={`relative ${className}`}>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none border border-line bg-card py-2 pl-3 pr-8 text-sm text-ink outline-none transition hover:border-ink/30 focus:border-ember focus:ring-2 focus:ring-ember/20"
-      >
-        {options.map((o) => (
-          <option key={o.v} value={o.v}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <svg
-        viewBox="0 0 24 24"
-        className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-mute"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-      >
-        <path d="m6 9 6 6 6-6" />
-      </svg>
+    <select value={value} onChange={(e) => onChange(e.target.value)} className={`${inputCls} cursor-pointer`}>
+      {options.map((o) => (
+        <option key={o.v} value={o.v}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+export function Slider({
+  value,
+  onChange,
+  max = 100,
+  step = 1,
+  suffix = "%",
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  max?: number;
+  step?: number;
+  suffix?: string;
+}) {
+  const fill = Math.min(100, Math.max(0, (value / max) * 100));
+  return (
+    <div className="flex items-center gap-3">
+      <input
+        type="range"
+        min={0}
+        max={max}
+        step={step}
+        value={Math.min(value, max)}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="range w-full"
+        style={{ "--fill": `${fill}%` } as CSSProperties}
+      />
+      <span className="w-14 shrink-0 text-right font-mono text-sm font-semibold text-ink">
+        {Math.round(value * 10) / 10}
+        {suffix}
+      </span>
     </div>
   );
 }
@@ -370,16 +561,14 @@ export function Seg<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="grid grid-flow-col gap-0.5 rounded-[4px] border border-line bg-card p-0.5">
+    <div className="inline-flex overflow-hidden border border-line bg-card">
       {options.map((o) => (
         <button
           key={o.v}
           type="button"
           onClick={() => onChange(o.v)}
-          className={`px-3 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wider transition-all duration-200 ${
-            value === o.v
-              ? "bg-ink text-paper shadow-sm"
-              : "text-mute hover:bg-ink/5 hover:text-ink"
+          className={`px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-all ${
+            value === o.v ? "bg-ink text-paper" : "text-mute hover:bg-paper hover:text-ink"
           }`}
         >
           {o.label}
@@ -389,61 +578,54 @@ export function Seg<T extends string>({
   );
 }
 
-export function Slider({
-  value,
-  onChange,
-  min = 0,
-  max = 100,
-  step = 1,
-  suffix = "%",
-}: {
-  value: number;
-  onChange: (n: number) => void;
-  min?: number;
-  max?: number;
-  step?: number;
-  suffix?: string;
-}) {
-  const fill = ((value - min) / (max - min)) * 100;
-  return (
-    <div className="flex items-center gap-3">
-      <input
-        type="range"
-        className="range flex-1"
-        style={{ "--fill": `${fill}%` } as CSSProperties}
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-      />
-      <span className="w-16 shrink-0 text-right font-mono text-sm font-semibold text-ink">
-        {roundSmart(value)}
-        {suffix}
-      </span>
-    </div>
+/* ---------------- animated numbers ---------------- */
+
+function useCountUp(target: number, dur = 450): number {
+  const [val, setVal] = useState(target);
+  const ref = useRef({ from: target, to: target, t0: 0 });
+  const reduced = useMemo(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    [],
   );
+  useEffect(() => {
+    if (reduced) {
+      setVal(target);
+      ref.current = { from: target, to: target, t0: 0 };
+      return;
+    }
+    ref.current = { from: ref.current.to, to: target, t0: performance.now() };
+    let raf = 0;
+    const tick = (t: number) => {
+      const { from, to, t0 } = ref.current;
+      const p = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      setVal(from + (to - from) * e);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, dur, reduced]);
+  return val;
 }
 
-export function Chip({
-  label,
+export function AnimatedNumber({
   value,
-  tone = "ink",
+  format,
+  className = "",
 }: {
-  label: string;
-  value: string;
-  tone?: "ink" | "ember" | "teal";
+  value: number;
+  format: (n: number) => string;
+  className?: string;
 }) {
-  const valueColor =
-    tone === "ember" ? "text-ember" : tone === "teal" ? "text-teal" : "text-paper";
+  const v = useCountUp(value);
+  const prev = useRef(value);
+  const flash = prev.current !== value;
+  useEffect(() => {
+    prev.current = value;
+  }, [value]);
   return (
-    <div className="flex items-baseline gap-2 border border-paper/15 bg-paper/5 px-3 py-1.5">
-      <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-paper/55">
-        {label}
-      </span>
-      <span key={value} className={`tick-flash font-mono text-xs font-semibold ${valueColor}`}>
-        {value}
-      </span>
-    </div>
+    <span key={value} className={`tabular-nums ${flash ? "tick-flash" : ""} ${className}`}>
+      {format(v)}
+    </span>
   );
 }

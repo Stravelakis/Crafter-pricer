@@ -1,319 +1,598 @@
-import { useMemo, useState } from "react";
-import type { Currency, Job, Machine, ResearchEntry, Settings } from "./types";
-import { DEFAULT_RESEARCH, SCENARIOS, defaultScenario, uid } from "./lib/presets";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  Finding,
+  Integrations,
+  Job,
+  Machine,
+  Preset,
+  ResearchEntry,
+  Settings,
+} from "./types";
+import { computeQuote, fmtMoney, pctForTarget } from "./lib/calc";
 import { BENCHMARKS, TYPE_TO_BENCH } from "./lib/market";
 import {
-  clamp,
-  computeQuote,
-  fmtMoney,
-  laborRate,
-  machinePerHour,
-  overheadPerHour,
-} from "./lib/calc";
-import { Chip, Icon, Reveal, useLocalStorage } from "./components/ui";
-import MachinesSection from "./components/MachinesSection";
+  DEFAULT_INTEGRATIONS,
+  DEFAULT_OFFER_DEFAULTS,
+  DEFAULT_OFFER_TEMPLATE,
+  DEFAULT_PRESETS,
+  DEFAULT_RESEARCH,
+  uid,
+} from "./lib/presets";
 import {
-  BillsSection,
-  LaborSection,
-  TaxMarketingSection,
-} from "./components/BusinessSections";
+  downloadFile,
+  enrichMachine,
+  extractPrice,
+  generateImage,
+  pushToSheets,
+  rowsToCsv,
+  searchWeb,
+  vendorFrom,
+  type RawResult,
+} from "./lib/ai";
+import CursorGrid from "./components/CursorGrid";
+import MachinesSection from "./components/MachinesSection";
+import ResearchPanel from "./components/ResearchPanel";
+import MarketPanel from "./components/MarketPanel";
 import JobTicket from "./components/JobTicket";
 import ResultsPanel from "./components/ResultsPanel";
-import MarketPanel from "./components/MarketPanel";
+import SettingsTab from "./components/SettingsTab";
+import OfferModal from "./components/OfferModal";
+import { AnimatedNumber, Field, Icon, Modal, Noise, ScrambleText, SelectInput, TextInput } from "./components/ui";
 
-/** sensible default benchmark units when the machine (and thus service) changes */
-const suggestUnits = (benchId: string, j: Job): number => {
-  const qty = Math.max(1, j.quantity);
-  switch (benchId) {
-    case "fdm-hour":
-    case "sla-hour":
-      return Math.round(j.machineHours * qty * 100) / 100;
-    case "engrave-min":
-    case "cut-min":
-      return Math.round(j.machineHours * 60 * qty);
-    case "uv-item":
-    case "engrave-item":
-      return qty;
-    case "uv-cm2":
-      return 100 * qty;
-    default:
-      return j.benchmarkUnits;
+const LS_KEY = "margincraft_v3";
+const SYM: Record<Settings["currency"], string> = { USD: "$", EUR: "€", GBP: "£" };
+const clone = <T,>(o: T): T => JSON.parse(JSON.stringify(o)) as T;
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+interface Persisted {
+  settings: Settings;
+  machines: Machine[];
+  job: Job;
+  research: ResearchEntry[];
+  integrations: Integrations;
+  presets: Preset[];
+  activePresetId: string;
+  offerTemplate: string;
+  offerDefaults: typeof DEFAULT_OFFER_DEFAULTS;
+}
+
+function boot(): Persisted {
+  const base = DEFAULT_PRESETS[1];
+  const fallback: Persisted = {
+    settings: base.settings,
+    machines: base.machines,
+    job: base.job,
+    research: DEFAULT_RESEARCH,
+    integrations: DEFAULT_INTEGRATIONS,
+    presets: DEFAULT_PRESETS,
+    activePresetId: "pro",
+    offerTemplate: DEFAULT_OFFER_TEMPLATE,
+    offerDefaults: DEFAULT_OFFER_DEFAULTS,
+  };
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return fallback;
+    const p = JSON.parse(raw) as Partial<Persisted>;
+    return {
+      settings: { ...fallback.settings, ...(p.settings ?? {}) },
+      machines: Array.isArray(p.machines) ? (p.machines as Machine[]) : fallback.machines,
+      job: { ...fallback.job, ...(p.job ?? {}) },
+      research: Array.isArray(p.research) ? (p.research as ResearchEntry[]) : fallback.research,
+      integrations: { ...fallback.integrations, ...(p.integrations ?? {}) },
+      presets: Array.isArray(p.presets) && p.presets.length ? (p.presets as Preset[]) : fallback.presets,
+      activePresetId: p.activePresetId ?? "pro",
+      offerTemplate: p.offerTemplate ?? DEFAULT_OFFER_TEMPLATE,
+      offerDefaults: { ...DEFAULT_OFFER_DEFAULTS, ...(p.offerDefaults ?? {}) },
+    };
+  } catch {
+    return fallback;
   }
-};
+}
+
+type Tab = "studio" | "settings";
 
 export default function App() {
-  const boot = useMemo(defaultScenario, []);
-  const [machines, setMachines] = useLocalStorage<Machine[]>("mc.machines.v1", boot.machines);
-  const [settings, setSettings] = useLocalStorage<Settings>("mc.settings.v1", boot.settings);
-  const [job, setJob] = useLocalStorage<Job>("mc.job.v1", boot.job);
-  const [research, setResearch] = useLocalStorage<ResearchEntry[]>("mc.research.v1", DEFAULT_RESEARCH);
-  const [scenarioId, setScenarioId] = useState<string | null>("pro");
+  const init = useRef(boot()).current;
+  const [tab, setTab] = useState<Tab>("studio");
+  const [settings, setSettings] = useState<Settings>(init.settings);
+  const [machines, setMachines] = useState<Machine[]>(init.machines);
+  const [job, setJob] = useState<Job>(init.job);
+  const [research, setResearch] = useState<ResearchEntry[]>(init.research);
+  const [integrations, setIntegrations] = useState<Integrations>(init.integrations);
+  const [presets, setPresets] = useState<Preset[]>(init.presets);
+  const [activePresetId, setActivePresetId] = useState(init.activePresetId);
+  const [offerTemplate, setOfferTemplate] = useState(init.offerTemplate);
+  const [offerDefaults, setOfferDefaults] = useState(init.offerDefaults);
 
-  const cur: Currency = settings.currency ?? "USD";
-  const machine = machines.find((m) => m.id === job.machineId) ?? machines[0];
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [query, setQuery] = useState("");
+  const [researching, setResearching] = useState(false);
+  const [researchError, setResearchError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [enrichId, setEnrichId] = useState<string | null>(null);
+  const [imageId, setImageId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const [offerOpen, setOfferOpen] = useState(false);
+  const [savePresetOpen, setSavePresetOpen] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  const [presetLocation, setPresetLocation] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number>(0);
+
+  /* persistence */
+  useEffect(() => {
+    const data: Persisted = {
+      settings, machines, job, research, integrations, presets, activePresetId, offerTemplate, offerDefaults,
+    };
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    } catch {
+      /* storage full — drop machine photos and retry once */
+      try {
+        localStorage.setItem(
+          LS_KEY,
+          JSON.stringify({ ...data, machines: data.machines.map((m) => ({ ...m, image: undefined })) }),
+        );
+      } catch { /* give up silently */ }
+    }
+  }, [settings, machines, job, research, integrations, presets, activePresetId, offerTemplate, offerDefaults]);
+
+  const say = (msg: string) => {
+    setToast(msg);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 3400);
+  };
+
+  /* derived */
+  const machine = machines.find((m) => m.id === job.machineId);
   const quote = useMemo(() => computeQuote(job, machine, settings), [job, machine, settings]);
-
-  const benchmarksAll = useMemo(
+  const benchmarks = useMemo(
     () => [
       ...BENCHMARKS,
       ...research.map((r) => ({
         id: r.id,
         label: r.label,
         unit: r.unit,
-        hint: `job size in ${r.unit}`,
+        hint: "your research",
         low: r.low,
         high: r.high,
         model: "your research",
         source: r.source,
-        custom: true as const,
+        custom: true,
       })),
     ],
     [research],
   );
-  const bench = benchmarksAll.find((b) => b.id === job.benchmarkId);
+  const bench = benchmarks.find((b) => b.id === job.benchmarkId);
 
-  /* ---------- handlers ---------- */
-
-  const patchSettings = (p: Partial<Settings>) => setSettings((s) => ({ ...s, ...p }));
-
-  const patchJob = (patch: Partial<Job>) =>
-    setJob((j) => {
-      const next = { ...j, ...patch };
-      if (patch.machineId) {
-        const m = machines.find((x) => x.id === patch.machineId);
-        if (m) {
-          next.benchmarkId = TYPE_TO_BENCH[m.type];
-          next.benchmarkUnits = suggestUnits(TYPE_TO_BENCH[m.type], next);
-        }
-      }
-      return next;
-    });
-
+  /* machine handlers */
   const addMachine = () => {
+    const id = uid();
     const m: Machine = {
-      id: uid(),
+      id,
       name: "New machine",
       type: "fdm",
       purchaseCost: 500,
       salvageValue: 200,
-      lifespanMonths: 48,
+      lifespanMonths: 36,
       hoursPerMonth: 40,
       watts: 200,
-      consumablesPerHour: 0.5,
+      consumablesPerHour: 0.6,
       maintenancePerMonth: 10,
     };
     setMachines((ms) => [...ms, m]);
-    setJob((j) => ({ ...j, machineId: m.id }));
+    setJob((j) => ({
+      ...j,
+      machineId: id,
+      benchmarkId: j.benchmarkId || TYPE_TO_BENCH[m.type],
+    }));
+    setShowAll(false);
   };
-
-  const patchMachine = (id: string, patch: Partial<Machine>) =>
-    setMachines((ms) => ms.map((m) => (m.id === id ? { ...m, ...patch } : m)));
-
+  const patchMachine = (id: string, p: Partial<Machine>) =>
+    setMachines((ms) => ms.map((m) => (m.id === id ? { ...m, ...p } : m)));
   const removeMachine = (id: string) => {
-    const next = machines.filter((m) => m.id !== id);
-    setMachines(next);
-    if (job.machineId === id) setJob({ ...job, machineId: next[0]?.id ?? "" });
+    setMachines((ms) => ms.filter((m) => m.id !== id));
+    if (job.machineId === id) setJob((j) => ({ ...j, machineId: "" }));
   };
 
-  const applyScenario = (id: string) => {
-    const sc = SCENARIOS.find((s) => s.id === id);
-    if (!sc) return;
-    setMachines(sc.machines);
-    setSettings(sc.settings);
-    setJob(sc.job);
-    setScenarioId(id);
+  const onEnrich = async (id: string) => {
+    const m = machines.find((x) => x.id === id);
+    if (!m) return;
+    if (!integrations.aiKey) {
+      say("Add an OpenAI-compatible key in Settings → Integrations first");
+      return;
+    }
+    setEnrichId(id);
+    try {
+      const out = await enrichMachine(integrations, m);
+      patchMachine(id, { summary: out.summary, specs: out.specs, links: { product: out.product_url, manual: out.manual_url } });
+      say(`Specs pulled for ${m.name || "machine"}`);
+    } catch (e) {
+      say(e instanceof Error ? e.message : "AI enrichment failed");
+    } finally {
+      setEnrichId(null);
+    }
   };
 
-  const applyTarget = (total: number) => {
-    if (total <= 0) return;
-    const m =
-      total <= quote.totalCost
-        ? 0
-        : clamp((1 - quote.totalCost / total) * 100, 0, 95);
-    setJob((j) => ({ ...j, marginMode: "margin", marginPct: Math.round(m * 10) / 10 }));
+  const onImage = async (id: string) => {
+    const m = machines.find((x) => x.id === id);
+    if (!m) return;
+    if (!integrations.cfAccountId || !integrations.cfToken) {
+      say("Add your Cloudflare account ID + AI token in Settings first");
+      return;
+    }
+    setImageId(id);
+    try {
+      const img = await generateImage(integrations, m);
+      patchMachine(id, { image: img });
+      say("Reference photo generated");
+    } catch (e) {
+      say(e instanceof Error ? e.message : "Image generation failed");
+    } finally {
+      setImageId(null);
+    }
   };
 
-  const addResearch = (e: ResearchEntry) => setResearch((rs) => [...rs, e]);
-  const removeResearch = (id: string) => {
-    setResearch((rs) => rs.filter((r) => r.id !== id));
-    if (job.benchmarkId === id)
-      setJob((j) => ({ ...j, benchmarkId: machine ? TYPE_TO_BENCH[machine.type] : "fdm-hour" }));
+  /* research */
+  const runResearch = async () => {
+    if (!query.trim()) return;
+    setResearching(true);
+    setResearchError(null);
+    try {
+      const raw: RawResult[] = await searchWeb(integrations, query.trim(), 8);
+      if (!raw.length) {
+        setResearchError("No results came back — try a shorter, more generic description.");
+        return;
+      }
+      const sym = SYM[settings.currency];
+      const fs: Finding[] = raw.map((r) => ({
+        id: uid(),
+        date: new Date().toISOString(),
+        query: query.trim(),
+        item: r.title,
+        vendor: vendorFrom(r.title),
+        price: extractPrice(`${r.title} ${r.snippet}`),
+        sym,
+        url: r.url,
+        provider: integrations.provider,
+      }));
+      setFindings(fs);
+      const priced = fs.filter((f) => f.price !== null).length;
+      say(`${fs.length} listings found · ${priced} with a price`);
+    } catch (e) {
+      setResearchError(e instanceof Error ? e.message : "Search failed — check your key / URL in Settings.");
+    } finally {
+      setResearching(false);
+    }
   };
-  const useResearch = (e: ResearchEntry) => setJob((j) => ({ ...j, benchmarkId: e.id }));
 
-  /* ---------- render ---------- */
+  const findingToEntry = (f: Finding): ResearchEntry => ({
+    id: uid(),
+    label: f.item.length > 64 ? `${f.item.slice(0, 61)}…` : f.item,
+    low: round2((f.price ?? 0) * 0.9),
+    high: round2((f.price ?? 0) * 1.1),
+    unit: `${f.sym}/item`,
+    source: f.url || "web research",
+  });
+
+  const useFinding = (f: Finding) => {
+    const e = findingToEntry(f);
+    setResearch((rs) => [...rs, e]);
+    setJob((j) => ({ ...j, benchmarkId: e.id, benchmarkUnits: Math.max(1, j.quantity) }));
+    say("Added to market intel & set as benchmark");
+  };
+  const useAllFindings = () => {
+    const priced = findings.filter((f) => f.price !== null);
+    if (!priced.length) return;
+    setResearch((rs) => [...rs, ...priced.map(findingToEntry)]);
+    say(`${priced.length} prices logged to market intel`);
+  };
+
+  const buildSheetRows = () => {
+    const priced = findings.filter((f) => f.price !== null).map((f) => f.price as number);
+    const date = new Date().toLocaleDateString("en-CA");
+    return [
+      {
+        date,
+        machine: machine?.name || "General",
+        item: query.trim() || job.name || "research",
+        myUnit: round2(quote.unitPrice),
+        myTotal: round2(quote.totalPrice),
+        myCost: round2(quote.totalCost),
+        mLow: priced.length ? round2(Math.min(...priced)) : null,
+        mHigh: priced.length ? round2(Math.max(...priced)) : null,
+        sources: findings.map((f) => f.url).filter(Boolean).join(" ; "),
+      },
+    ];
+  };
+
+  const syncSheets = async () => {
+    const rows = buildSheetRows();
+    if (integrations.sheetsWebhook) {
+      setSyncing(true);
+      try {
+        await pushToSheets(integrations.sheetsWebhook, rows);
+        setIntegrations((i) => ({ ...i, sheetsLastSync: new Date().toISOString() }));
+        say("Logged to Google Sheets ✓");
+      } catch {
+        say("Sheets sync failed — check the Web App URL in Settings");
+      } finally {
+        setSyncing(false);
+      }
+    } else {
+      downloadFile(`margincraft-log-${rows[0].date}.csv`, rowsToCsv(rows), "text/csv");
+      say("No Sheets webhook set — exported CSV instead");
+    }
+  };
+
+  /* presets */
+  const applyPreset = (id: string) => {
+    const p = presets.find((x) => x.id === id);
+    if (!p) return;
+    setMachines(clone(p.machines));
+    setSettings(clone(p.settings));
+    setJob(clone(p.job));
+    setActivePresetId(id);
+    setShowAll(false);
+    say(`Preset “${p.name}” applied`);
+  };
+  const savePreset = (name: string, location: string) => {
+    const p: Preset = {
+      id: uid(),
+      name,
+      location,
+      custom: true,
+      machines: clone(machines),
+      settings: clone(settings),
+      job: clone(job),
+    };
+    setPresets((ps) => [...ps, p]);
+    setActivePresetId(p.id);
+    say(`Preset “${name}” saved`);
+  };
+  const deletePreset = (id: string) => {
+    setPresets((ps) => ps.filter((p) => p.id !== id));
+    if (activePresetId === id) setActivePresetId("");
+  };
+  const renamePreset = (id: string, patch: Partial<Preset>) =>
+    setPresets((ps) => ps.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+
+  const onTarget = (total: number) => {
+    setJob((j) => ({ ...j, marginPct: pctForTarget(total, quote.totalCost, j.marginMode) }));
+  };
+
+  const focusId = job.machineId || null;
 
   return (
-    <div className="min-h-screen">
-      {/* ======= top bar ======= */}
-      <header className="sticky top-0 z-50 border-b-2 border-ember bg-ink">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-5 py-2.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center bg-ember text-ink">
-            <Icon name="spark" className="h-5 w-5" sw={2.2} />
-          </span>
-          <div className="min-w-0">
-            <p className="font-display text-sm font-bold uppercase leading-tight tracking-[0.2em] text-paper">
-              MarginCraft
-            </p>
-            <p className="font-mono text-[8.5px] uppercase tracking-[0.3em] text-paper/45">
-              maker pricing studio
-            </p>
+    <div className="relative min-h-screen">
+      <CursorGrid />
+
+      {/* ---------- header ---------- */}
+      <header className="sticky top-0 z-40 border-b-2 border-ink bg-paper/92 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-[1440px] items-center gap-4 px-4 py-2.5 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden bg-ink font-display text-sm font-bold text-ember">
+              <Noise opacity={0.14} />
+              <span className="relative">M/C</span>
+            </div>
+            <div className="leading-none">
+              <ScrambleText
+                text="MARGINCRAFT"
+                className="block font-display text-lg font-bold tracking-[0.06em] text-ink"
+              />
+              <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-[0.24em] text-mute">
+                maker pricing studio
+              </span>
+            </div>
           </div>
-          <div className="ml-auto hidden items-center gap-1.5 xl:flex">
-            <Chip label="Overhead/hr" value={fmtMoney(overheadPerHour(settings), cur)} />
-            <Chip label="Labor/hr" value={fmtMoney(laborRate(settings), cur)} tone="teal" />
-            <Chip
-              label={machine ? "Machine/hr" : "No machine"}
-              value={machine ? fmtMoney(machinePerHour(machine, settings), cur) : "—"}
-              tone="ember"
+
+          <nav className="ml-2 flex items-center gap-1 sm:ml-8">
+            {(
+              [
+                { id: "studio", label: "Studio", icon: "printer" },
+                { id: "settings", label: "Settings", icon: "cog" },
+              ] as { id: Tab; label: string; icon: "printer" | "cog" }[]
+            ).map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`relative flex items-center gap-2 px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] transition-all ${
+                  tab === t.id ? "bg-ink text-paper" : "text-mute hover:bg-ink/5 hover:text-ink"
+                }`}
+              >
+                <Icon name={t.icon} className="h-4 w-4" />
+                {t.label}
+                {tab === t.id && <span className="absolute inset-x-0 -bottom-[11px] h-[3px] bg-ember" />}
+              </button>
+            ))}
+          </nav>
+
+          <div className="ml-auto hidden items-baseline gap-2 md:flex">
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-mute">unit price</span>
+            <AnimatedNumber
+              value={quote.unitPrice}
+              format={(n) => fmtMoney(n, settings.currency)}
+              className="font-mono text-base font-bold text-ember-deep"
             />
           </div>
-          <select
-            value={cur}
-            onChange={(e) => patchSettings({ currency: e.target.value as Currency })}
-            title="Currency"
-            className="ml-2 shrink-0 cursor-pointer border border-paper/25 bg-ink px-2 py-1.5 font-mono text-xs text-paper outline-none transition hover:border-ember focus:border-ember"
-          >
-            {(["USD", "EUR", "GBP"] as Currency[]).map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => applyScenario(defaultScenario().id)}
-            title="Reset to the default studio"
-            className="grid h-8 w-8 shrink-0 place-items-center border border-paper/25 text-paper/60 transition-all hover:border-ember hover:text-ember active:translate-y-px"
-          >
-            <Icon name="trash" className="h-4 w-4" />
-          </button>
         </div>
       </header>
 
-      {/* ======= masthead ======= */}
-      <div className="border-b border-line">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 items-end gap-8 px-5 pb-8 pt-10 lg:grid-cols-[1fr_340px]">
-          <Reveal>
-            <p className="mb-3 flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.26em] text-ember">
-              <Icon name="bolt" className="h-3.5 w-3.5" sw={2.2} />
-              3D · UV · Laser — cost-plus pricing workbench
-            </p>
-            <h1 className="font-display text-[2.6rem] font-bold leading-[0.95] tracking-tight text-ink sm:text-6xl">
-              Cost it to the cent.
-              <br />
-              <span
-                className="text-transparent"
-                style={{ WebkitTextStroke: "1.6px var(--color-ink)" }}
-              >
-                Price it to win.
+      <main className="relative z-10 mx-auto max-w-[1440px] px-4 py-6 sm:px-6">
+        {tab === "studio" ? (
+          <>
+            {/* preset strip */}
+            <div className="panel mb-6 flex flex-wrap items-center gap-3 px-4 py-3">
+              <Icon name="layers" className="h-4 w-4 shrink-0 text-ember" />
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-mute">
+                Preset
               </span>
-            </h1>
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-mute">
-              Drop in your machines, your hour, your bills and your tax bite. MarginCraft turns
-              them into an honest cost-plus price — then checks it against what the market
-              actually pays for printing, engraving and cutting work.
-            </p>
-          </Reveal>
-          <Reveal delay={120}>
-            <div>
-              <p className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-mute">
-                Load a studio preset
-              </p>
-              <div className="space-y-1.5">
-                {SCENARIOS.map((sc, i) => (
-                  <button
-                    key={sc.id}
-                    type="button"
-                    onClick={() => applyScenario(sc.id)}
-                    className={`group flex w-full items-center gap-3 border px-3.5 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-press-sm)] active:translate-y-0 ${
-                      scenarioId === sc.id
-                        ? "border-ember bg-card shadow-[var(--shadow-press-sm)]"
-                        : "border-line bg-panel"
-                    }`}
-                  >
-                    <span
-                      className={`font-mono text-xs font-bold ${
-                        scenarioId === sc.id ? "text-ember" : "text-mute"
-                      }`}
-                    >
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block font-display text-sm font-bold uppercase tracking-wide text-ink">
-                        {sc.label}
-                      </span>
-                      <span className="block truncate text-[11px] text-mute">{sc.blurb}</span>
-                    </span>
-                    <Icon
-                      name="check"
-                      sw={2.6}
-                      className={`ml-auto h-4 w-4 shrink-0 text-ember transition-opacity ${
-                        scenarioId === sc.id ? "opacity-100" : "opacity-0 group-hover:opacity-40"
-                      }`}
-                    />
-                  </button>
-                ))}
+              <div className="w-56 min-w-40">
+                <SelectInput
+                  value={activePresetId}
+                  onChange={applyPreset}
+                  options={[
+                    ...presets.map((p) => ({ v: p.id, label: `${p.name} — ${p.location}` })),
+                    ...(presets.some((p) => p.id === activePresetId) ? [] : [{ v: activePresetId, label: "Custom state" }]),
+                  ]}
+                />
+              </div>
+              <button
+                onClick={() => setSavePresetOpen(true)}
+                className="flex items-center gap-1.5 border border-line px-2.5 py-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-ink-2 transition-all hover:border-ember hover:text-ember active:translate-y-px"
+              >
+                <Icon name="plus" className="h-3.5 w-3.5" sw={2.2} />
+                Save current…
+              </button>
+              <button
+                onClick={() => setTab("settings")}
+                className="ml-auto hidden font-mono text-[10px] uppercase tracking-wider text-teal underline-offset-2 hover:underline sm:block"
+              >
+                manage presets
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              <div className="space-y-6 lg:col-span-7">
+                <MachinesSection
+                  machines={machines}
+                  totalCount={machines.length}
+                  focusId={focusId}
+                  showAll={showAll}
+                  onToggleShowAll={() => setShowAll((s) => !s)}
+                  settings={settings}
+                  onAdd={addMachine}
+                  onPatch={patchMachine}
+                  onRemove={removeMachine}
+                  onEnrich={onEnrich}
+                  onImage={onImage}
+                  enrichId={enrichId}
+                  imageId={imageId}
+                />
+                <ResearchPanel
+                  currency={settings.currency}
+                  integrations={integrations}
+                  query={query}
+                  onQuery={setQuery}
+                  findings={findings}
+                  researching={researching}
+                  error={researchError}
+                  onResearch={runResearch}
+                  onUseFinding={useFinding}
+                  onUseAll={useAllFindings}
+                  onSyncSheets={syncSheets}
+                  syncing={syncing}
+                  onGoSettings={() => setTab("settings")}
+                />
+                <MarketPanel
+                  research={research}
+                  onAdd={(e) => setResearch((rs) => [...rs, e])}
+                  onRemove={(id) => setResearch((rs) => rs.filter((r) => r.id !== id))}
+                  onUse={(e) => {
+                    const exists = research.some((r) => r.id === e.id) || BENCHMARKS.some((b) => b.id === e.id);
+                    if (!exists) setResearch((rs) => [...rs, e]);
+                    setJob((j) => ({ ...j, benchmarkId: e.id, benchmarkUnits: Math.max(1, j.quantity) }));
+                    say("Benchmark set from market intel");
+                  }}
+                />
+              </div>
+
+              <div className="order-first space-y-6 lg:order-none lg:col-span-5">
+                <div className="space-y-6 pb-2 lg:sticky lg:top-[76px] lg:max-h-[calc(100vh-92px)] lg:overflow-y-auto lg:pr-1">
+                  <JobTicket
+                    job={job}
+                    machines={machines}
+                    machine={machine}
+                    quote={quote}
+                    currency={settings.currency}
+                    onChange={(p) => setJob((j) => ({ ...j, ...p }))}
+                  />
+                  <ResultsPanel
+                    quote={quote}
+                    job={job}
+                    currency={settings.currency}
+                    bench={bench}
+                    benchmarks={benchmarks}
+                    onJob={(p) => setJob((j) => ({ ...j, ...p }))}
+                    onTarget={onTarget}
+                    onOffer={() => setOfferOpen(true)}
+                  />
+                </div>
               </div>
             </div>
-          </Reveal>
-        </div>
-      </div>
-
-      {/* ======= workbench ======= */}
-      <main className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-5 py-8 lg:grid-cols-12">
-        <div className="space-y-6 lg:col-span-7">
-          <MachinesSection
-            machines={machines}
+          </>
+        ) : (
+          <SettingsTab
             settings={settings}
-            onPatch={patchMachine}
-            onRemove={removeMachine}
-            onAdd={addMachine}
+            onPatch={(p) => setSettings((s) => ({ ...s, ...p }))}
+            integrations={integrations}
+            onIntegrations={(p) => setIntegrations((i) => ({ ...i, ...p }))}
+            presets={presets}
+            activeId={activePresetId}
+            onApply={applyPreset}
+            onSaveCurrent={savePreset}
+            onDeletePreset={deletePreset}
+            onRenamePreset={renamePreset}
+            offerTemplate={offerTemplate}
+            onOfferTemplate={setOfferTemplate}
+            offerDefaults={offerDefaults}
+            onOfferDefaults={(p) => setOfferDefaults((d) => ({ ...d, ...p }))}
+            onToast={say}
           />
-          <LaborSection settings={settings} onPatch={patchSettings} />
-          <BillsSection settings={settings} onPatch={patchSettings} />
-          <TaxMarketingSection settings={settings} onPatch={patchSettings} />
-          <MarketPanel
-            research={research}
-            onAdd={addResearch}
-            onRemove={removeResearch}
-            onUse={useResearch}
-          />
-        </div>
-        <div className="order-first lg:order-none lg:col-span-5">
-          <div className="space-y-6 pb-2 lg:sticky lg:top-[72px] lg:max-h-[calc(100vh-88px)] lg:overflow-y-auto lg:pr-1">
-            <JobTicket
-              job={job}
-              machines={machines}
-              machine={machine}
-              quote={quote}
-              currency={cur}
-              onChange={patchJob}
-            />
-            <ResultsPanel
-              quote={quote}
-              job={job}
-              currency={cur}
-              bench={bench}
-              benchmarks={benchmarksAll}
-              onJob={patchJob}
-              onTarget={applyTarget}
-            />
-          </div>
-        </div>
+        )}
+
+        <footer className="mt-10 flex flex-wrap items-center justify-between gap-2 border-t-2 border-ink pt-4 pb-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-mute">
+            cost+margin · straight-line depreciation · VAT + profit/presumptive tax
+          </p>
+          <p className="font-mono text-[10px] text-mute">keys & data never leave your browser · saved locally</p>
+        </footer>
       </main>
 
-      {/* ======= footer ======= */}
-      <footer className="mt-4 border-t border-line bg-panel/70">
-        <div className="mx-auto flex max-w-7xl flex-col gap-1.5 px-5 py-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-mute">
-            MarginCraft — every number stays in your browser
-          </p>
-          <p className="font-mono text-[10px] text-mute">
-            Market bands are indicative (USD sources). Verify against your local market.
-          </p>
+      {/* save-preset modal */}
+      <Modal open={savePresetOpen} onClose={() => setSavePresetOpen(false)} title="Save current setup as preset">
+        <div className="space-y-3">
+          <Field label="Preset name">
+            <TextInput value={presetName} onChange={setPresetName} placeholder="e.g. Berlin studio — winter rates" />
+          </Field>
+          <Field label="Business location / context">
+            <TextInput value={presetLocation} onChange={setPresetLocation} placeholder="e.g. Berlin, DE · B2B clients" />
+          </Field>
+          <button
+            onClick={() => {
+              if (!presetName.trim()) return;
+              savePreset(presetName.trim(), presetLocation.trim() || "Custom");
+              setPresetName("");
+              setPresetLocation("");
+              setSavePresetOpen(false);
+            }}
+            disabled={!presetName.trim()}
+            className="flex items-center gap-2 border border-ink bg-ink px-4 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-paper transition-all enabled:hover:border-ember enabled:hover:bg-ember enabled:active:translate-y-px disabled:opacity-40"
+          >
+            <Icon name="check" className="h-4 w-4" sw={2.2} />
+            Save snapshot
+          </button>
         </div>
-      </footer>
+      </Modal>
+
+      <OfferModal
+        open={offerOpen}
+        onClose={() => setOfferOpen(false)}
+        quote={quote}
+        job={job}
+        currency={settings.currency}
+        template={offerTemplate}
+        defaults={offerDefaults}
+        onToast={say}
+      />
+
+      {/* toast */}
+      {toast && (
+        <div className="toast-in fixed bottom-5 right-5 z-[70] flex items-center gap-2.5 border border-ink bg-ink px-4 py-3 font-mono text-xs text-paper shadow-[var(--shadow-press)]">
+          <Icon name="sparkle" className="h-4 w-4 text-ember" />
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

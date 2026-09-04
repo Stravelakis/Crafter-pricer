@@ -1,7 +1,12 @@
-import type { Currency, Job, Machine, Quote, Settings } from "../types";
+import type { Currency, Job, Machine, Quote, Settings, TaxBracket } from "../types";
 
 export const clamp = (n: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, n));
+
+export const MODE_MAX: Record<"margin" | "markup", number> = {
+  margin: 95,
+  markup: 300,
+};
 
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -41,6 +46,17 @@ export function laborRate(s: Settings): number {
   return s.hourlyWage * (1 + s.laborBurdenPct / 100);
 }
 
+/** presumptive tax: bracket where upTo = 0 means "and above" */
+export function presumptiveTax(revenue: number, brackets: TaxBracket[]): number {
+  if (!brackets.length) return 0;
+  const sorted = [...brackets].sort(
+    (a, b) => (a.upTo || Infinity) - (b.upTo || Infinity),
+  );
+  const hit =
+    sorted.find((b) => !b.upTo || revenue <= b.upTo) ?? sorted[sorted.length - 1];
+  return hit.kind === "percent" ? revenue * (hit.value / 100) : hit.value;
+}
+
 export function computeQuote(
   job: Job,
   machine: Machine | undefined,
@@ -65,15 +81,21 @@ export function computeQuote(
   const unitCost = uMaterials + uMachine + uLabor + uOverhead + uSetup;
   const totalCost = unitCost * qty;
 
-  const marginPct = clamp(job.marginPct || 0, 0, 97);
+  const pct = clamp(job.marginPct || 0, 0, MODE_MAX[job.marginMode]);
   const unitPrice =
     job.marginMode === "margin"
-      ? unitCost / (1 - marginPct / 100)
-      : unitCost * (1 + marginPct / 100);
+      ? unitCost / (1 - pct / 100)
+      : unitCost * (1 + pct / 100);
   const totalPrice = unitPrice * qty;
 
+  const vat = totalPrice * (s.vatPct / 100);
+  const invoiceTotal = totalPrice + vat;
+
   const profit = totalPrice - totalCost;
-  const tax = Math.max(0, profit) * (s.profitTaxPct / 100);
+  const profitTax = Math.max(0, profit) * (s.profitTaxPct / 100);
+  const presTax =
+    s.regime === "presumptive" ? presumptiveTax(totalPrice, s.brackets) : 0;
+  const tax = s.regime === "presumptive" ? presTax : profitTax;
   const net = profit - tax;
 
   const activeHours = mh + lh;
@@ -96,13 +118,41 @@ export function computeQuote(
     totalCost: round3(totalCost),
     unitPrice: round3(unitPrice),
     totalPrice: round3(totalPrice),
+    vatPct: s.vatPct,
+    vat: round3(vat),
+    invoiceTotal: round3(invoiceTotal),
     profit: round3(profit),
+    profitTax: round3(profitTax),
+    presumptiveTax: round3(presTax),
     tax: round3(tax),
     net: round3(net),
+    regime: s.regime,
     blended: round3(blended),
     activeHours: round3(activeHours),
     effWage: round3(effWage),
   };
+}
+
+/** margin <-> markup conversion so switching modes keeps the same price */
+export function convertPct(pct: number, from: "margin" | "markup"): number {
+  const m = clamp(pct, 0, MODE_MAX[from]) / 100;
+  const other =
+    from === "margin" ? (m < 1 ? m / (1 - m) : 9) : (m > 0 ? m / (1 + m) : 0);
+  return Math.round(clamp(other * 100, 0, from === "margin" ? MODE_MAX.markup : MODE_MAX.margin) * 10) / 10;
+}
+
+/** margin or markup % that lands exactly on a target total price */
+export function pctForTarget(
+  targetTotal: number,
+  totalCost: number,
+  mode: "margin" | "markup",
+): number {
+  if (totalCost <= 0 || targetTotal <= 0) return 0;
+  const raw =
+    mode === "margin"
+      ? (1 - totalCost / targetTotal) * 100
+      : (targetTotal / totalCost - 1) * 100;
+  return Math.round(clamp(raw, 0, MODE_MAX[mode]) * 10) / 10;
 }
 
 export function fmtMoney(n: number, currency: Currency, digits = 2): string {

@@ -9,61 +9,63 @@ export type MachineType =
 
 export type Currency = "USD" | "EUR" | "GBP";
 export type MarginMode = "margin" | "markup";
+export type TaxRegime = "profit" | "presumptive";
+export type SearchProvider = "tavily" | "firecrawl" | "searxng" | "crawl4ai";
 
 export interface Machine {
   id: string;
   name: string;
   type: MachineType;
   purchaseCost: number;
-  /** expected resale / buy-back value at end of life */
   salvageValue: number;
-  /** months until repurchase (useful life) */
   lifespanMonths: number;
-  /** expected productive hours per month */
   hoursPerMonth: number;
-  /** average power draw in watts while running */
   watts: number;
-  /** wear & consumables cost per running hour (nozzles, film, lens…) */
   consumablesPerHour: number;
-  /** scheduled maintenance cost per month */
   maintenancePerMonth: number;
+  summary?: string;
+  specs?: [string, string][];
+  links?: { product?: string | null; manual?: string | null };
+  image?: string;
+}
+
+/** upTo = 0 means "and above" (catch-all top bracket) */
+export interface TaxBracket {
+  id: string;
+  upTo: number;
+  kind: "percent" | "fixed";
+  value: number;
 }
 
 export interface Settings {
   currency: Currency;
   hourlyWage: number;
-  /** payroll burden on top of wage, % */
   laborBurdenPct: number;
-  /** electricity price per kWh */
   electricityRate: number;
   rent: number;
   utilities: number;
   software: number;
   insurance: number;
   otherBills: number;
-  /** productive hours per month used to spread fixed costs */
   billableHours: number;
-  /** tax owed on profit, % */
+  vatPct: number;
   profitTaxPct: number;
+  regime: TaxRegime;
+  brackets: TaxBracket[];
   marketingMonthly: number;
 }
 
 export interface Job {
   name: string;
   machineId: string;
-  /** machine hours needed per unit */
   machineHours: number;
-  /** hands-on labor hours per unit */
   laborHours: number;
-  /** raw material cost per unit */
   materialCost: number;
-  /** one-time prep/setup fee for the whole order */
   setupFee: number;
   quantity: number;
   marginMode: MarginMode;
   marginPct: number;
   benchmarkId: string;
-  /** how many benchmark units this whole job uses (grams, minutes, items…) */
   benchmarkUnits: number;
 }
 
@@ -83,13 +85,17 @@ export interface Quote {
   totalCost: number;
   unitPrice: number;
   totalPrice: number;
+  vatPct: number;
+  vat: number;
+  invoiceTotal: number;
   profit: number;
+  profitTax: number;
+  presumptiveTax: number;
   tax: number;
   net: number;
-  /** true all-in cost per active (machine + labor) hour */
+  regime: TaxRegime;
   blended: number;
   activeHours: number;
-  /** effective after-tax hourly wage for the owner */
   effWage: number;
 }
 
@@ -112,4 +118,54 @@ export interface ResearchEntry {
   high: number;
   unit: string;
   source: string;
+}
+
+export interface Integrations {
+  aiBase: string;
+  aiKey: string;
+  aiModel: string;
+  provider: SearchProvider;
+  tavilyKey: string;
+  firecrawlKey: string;
+  searxngUrl: string;
+  crawl4aiUrl: string;
+  cfAccountId: string;
+  cfToken: string;
+  cfModel: string;
+  sheetsWebhook: string;
+  sheetsLastSync?: string;
+}
+
+export interface Finding {
+  id: string;
+  date: string;
+  query: string;
+  item: string;
+  vendor: string;
+  price: number | null;
+  sym: string;
+  url: string;
+  provider: SearchProvider;
+}
+
+export interface SheetRow {
+  date: string;
+  machine: string;
+  item: string;
+  myUnit: number;
+  myTotal: number;
+  myCost: number;
+  mLow: number | null;
+  mHigh: number | null;
+  sources: string;
+}
+
+export interface Preset {
+  id: string;
+  name: string;
+  location: string;
+  custom?: boolean;
+  machines: Machine[];
+  settings: Settings;
+  job: Job;
 }
