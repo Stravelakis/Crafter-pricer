@@ -199,7 +199,7 @@ export function TaxSection({ settings, onPatch }: { settings: Settings; onPatch:
               </div>
             </Field>
             <div className="mt-4">
-              <Field label="Expected revenue for the bracket period" help="tPresRevenue" hint="month or year">
+              <Field label="Expected period revenue" help="tPresRevenue" hint="month or year">
                 <NumInput
                   value={settings.presumptiveRevenue}
                   onChange={(n) => onPatch({ presumptiveRevenue: n })}

@@ -1,5 +1,13 @@
+# dependencies and build output
 node_modules/
-.next/
 dist/
 build/
 *.log
+
+# secrets: never committed (see .env.example)
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
