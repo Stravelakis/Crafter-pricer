@@ -52,6 +52,8 @@ export interface Settings {
   profitTaxPct: number;
   regime: TaxRegime;
   brackets: TaxBracket[];
+  /** expected revenue for the period the brackets describe (month or year) */
+  presumptiveRevenue: number;
   marketingMonthly: number;
 }
 
@@ -91,6 +93,10 @@ export interface Quote {
   profit: number;
   profitTax: number;
   presumptiveTax: number;
+  /** effective presumptive rate applied to this job's revenue, in % */
+  presumptiveRatePct: number;
+  /** true when no period revenue is set, so the job's own revenue stood in for it */
+  presumptiveRevenueMissing: boolean;
   tax: number;
   net: number;
   regime: TaxRegime;
@@ -133,6 +139,8 @@ export interface Integrations {
   cfToken: string;
   cfModel: string;
   sheetsWebhook: string;
+  /** shared secret the bridge script checks, so only this app can write to the sheet */
+  sheetsSecret: string;
   sheetsFileId?: string;
   sheetsLastSync?: string;
 }

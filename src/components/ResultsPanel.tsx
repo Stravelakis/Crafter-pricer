@@ -178,7 +178,9 @@ export default function ResultsPanel({
             </div>
             <div className="ledger-row">
               <span className="text-[13px] text-paper/60">
-                {quote.regime === "presumptive" ? "Presumptive tax on revenue" : "Profit tax"}
+                {quote.regime === "presumptive"
+                  ? `Presumptive tax · ${quote.presumptiveRatePct.toFixed(1)}% of revenue${quote.presumptiveRevenueMissing ? " (set period revenue)" : ""}`
+                  : "Profit tax"}
               </span>
               <span className="dots !border-paper/25" />
               <span className="font-mono text-sm text-paper/70">−{fmtMoney(quote.tax, currency)}</span>

@@ -1,4 +1,4 @@
-import type { Currency, Machine, MachineType } from "../types";
+import type { Machine, MachineType } from "../types";
 import { depPerHour, fmtMoney, machinePerHour, runPerHour } from "../lib/calc";
 import { MACHINE_TYPE_LABELS } from "../lib/market";
 import type { Settings } from "../types";

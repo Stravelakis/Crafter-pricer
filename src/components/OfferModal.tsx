@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Currency, Job, Quote, Settings } from "../types";
+import type { Currency, Job, Quote } from "../types";
 import { fmtMoney, fmtNum } from "../lib/calc";
 import { downloadFile, renderOffer } from "../lib/ai";
 import { DEFAULT_OFFER_DEFAULTS } from "../lib/presets";

@@ -57,6 +57,23 @@ export function presumptiveTax(revenue: number, brackets: TaxBracket[]): number 
   return hit.kind === "percent" ? revenue * (hit.value / 100) : hit.value;
 }
 
+/**
+ * Brackets describe a whole period (month or year), so the tax is worked out
+ * on the expected period revenue and each job pays its share at that
+ * effective rate. Without a period revenue, the job's revenue stands in.
+ */
+export function presumptiveTaxForJob(
+  jobRevenue: number,
+  periodRevenue: number,
+  brackets: TaxBracket[],
+): { tax: number; ratePct: number; revenueMissing: boolean } {
+  const revenueMissing = !(periodRevenue > 0);
+  const base = revenueMissing ? jobRevenue : periodRevenue;
+  if (base <= 0) return { tax: 0, ratePct: 0, revenueMissing };
+  const rate = presumptiveTax(base, brackets) / base;
+  return { tax: jobRevenue * rate, ratePct: rate * 100, revenueMissing };
+}
+
 export function computeQuote(
   job: Job,
   machine: Machine | undefined,
@@ -93,8 +110,11 @@ export function computeQuote(
 
   const profit = totalPrice - totalCost;
   const profitTax = Math.max(0, profit) * (s.profitTaxPct / 100);
-  const presTax =
-    s.regime === "presumptive" ? presumptiveTax(totalPrice, s.brackets) : 0;
+  const pres =
+    s.regime === "presumptive"
+      ? presumptiveTaxForJob(totalPrice, s.presumptiveRevenue, s.brackets)
+      : { tax: 0, ratePct: 0, revenueMissing: false };
+  const presTax = pres.tax;
   const tax = s.regime === "presumptive" ? presTax : profitTax;
   const net = profit - tax;
 
@@ -124,6 +144,8 @@ export function computeQuote(
     profit: round3(profit),
     profitTax: round3(profitTax),
     presumptiveTax: round3(presTax),
+    presumptiveRatePct: round3(pres.ratePct),
+    presumptiveRevenueMissing: pres.revenueMissing,
     tax: round3(tax),
     net: round3(net),
     regime: s.regime,

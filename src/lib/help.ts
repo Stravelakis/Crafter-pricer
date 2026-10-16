@@ -152,6 +152,12 @@ export const HELP: Record<string, HelpEntry> = {
     why: "Presumptive schemes jump tiers as revenue grows — the right bracket keeps the tax slice realistic.",
     empty: "With no brackets, presumptive tax computes as 0 — add at least one catch-all row ($0 cap) with your rate.",
   },
+  tPresRevenue: {
+    what: "The revenue you expect over the period your brackets are written for (a month or a year).",
+    how: "Use the same period as the brackets: if the caps are yearly, enter expected yearly revenue.",
+    why: "Brackets apply to your total revenue, not to one job. The app finds your bracket from this figure, then charges each job its share at that effective rate.",
+    empty: "Left at 0, each job is treated as your whole period's revenue — a flat-fee tier would then be charged in full on every quote.",
+  },
 
   /* ---------- marketing ---------- */
   mkBudget: {
@@ -387,7 +393,7 @@ export const HELP: Record<string, HelpEntry> = {
   sWebhook: {
     what: "The URL of a tiny Google Apps Script web app that receives your price log.",
     how: "1) Open script.google.com → new project → paste the bridge script (button below). 2) Deploy → Web app → run as “Me”, access “Anyone”. 3) Copy the …/exec URL here.",
-    why: "Every “Sync to Sheets” press then appends a dated row — your quote vs the market range, with source links — into a tab named after the machine.",
+    why: "Every “Sync to Sheets” press then appends a dated row — your quote vs the market range, with source links — into a tab named after the machine. The script only accepts requests carrying your secret, so a leaked URL can't write to your sheet.",
     empty: "No problem: sync downloads a CSV file instead, which you can open in Sheets manually.",
   },
   sFileId: {

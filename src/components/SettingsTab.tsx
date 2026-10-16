@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { Integrations, Preset, Settings, SearchProvider } from "../types";
-import { SHEETS_SCRIPT } from "../lib/ai";
+import { sheetsScript } from "../lib/ai";
+import { newSheetsSecret } from "../lib/presets";
 import { BillsSection, LaborSection, MarketingSection, TaxSection } from "./BusinessSections";
-import { Field, HelpTip, Icon, Reveal, Section, Seg, SelectInput, TextArea, TextInput } from "./ui";
+import { Field, HelpTip, Icon, Reveal, Section, Seg, TextArea, TextInput } from "./ui";
 
 const PROVIDERS: { v: SearchProvider; label: string; hint: string }[] = [
   { v: "tavily", label: "Tavily", hint: "api key — api.tavily.com" },
@@ -148,9 +149,10 @@ export default function SettingsTab({
   const [newName, setNewName] = useState("");
   const [newLocation, setNewLocation] = useState("");
 
+  const script = sheetsScript(integrations.sheetsSecret);
   const copyScript = async () => {
     try {
-      await navigator.clipboard.writeText(SHEETS_SCRIPT);
+      await navigator.clipboard.writeText(script);
       onToast("Apps Script copied — paste it into script.google.com");
     } catch {
       onToast("Could not access the clipboard");
@@ -290,6 +292,20 @@ export default function SettingsTab({
                     />
                   </Field>
                 </div>
+                <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[10px] text-mute">
+                  <span className="font-mono uppercase tracking-wider">Bridge secret</span>
+                  <span className="font-mono text-ink-2">{integrations.sheetsSecret.slice(0, 6)}…</span>
+                  <span>baked into the script below — only requests carrying it are written to your sheet.</span>
+                  <button
+                    onClick={() => {
+                      onIntegrations({ sheetsSecret: newSheetsSecret() });
+                      onToast("New secret — copy the script again and redeploy it");
+                    }}
+                    className="font-mono uppercase tracking-wider text-teal underline-offset-2 hover:underline"
+                  >
+                    reset
+                  </button>
+                </div>
                 <ol className="mt-3 space-y-1.5 text-xs leading-relaxed text-ink-2">
                   <li><span className="mr-1.5 font-mono text-ember">1.</span>Open <a className="text-teal underline underline-offset-2" href="https://script.google.com" target="_blank" rel="noreferrer">script.google.com</a> → new project → paste the bridge script.</li>
                   <li><span className="mr-1.5 font-mono text-ember">2.</span>Deploy → Web app → execute as <em>Me</em>, access <em>Anyone</em> → copy the URL above.</li>
@@ -311,7 +327,7 @@ export default function SettingsTab({
                 </div>
                 {showScript && (
                   <pre className="mt-3 max-h-56 overflow-y-auto border border-line bg-card p-3 font-mono text-[10px] leading-relaxed text-ink-2">
-                    {SHEETS_SCRIPT}
+                    {script}
                   </pre>
                 )}
               </Section>
