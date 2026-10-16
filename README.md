@@ -28,7 +28,7 @@ Most makers price by gut feeling or by copying Etsy. Machine wear, the electrici
 - **Web:** not hosted yet (planned: Cloudflare Pages, see [DEPLOY.md](DEPLOY.md)).
 - **From source:** `bun install` then `bun run dev` → http://localhost:26419
 
-Full setup: [INSTALL.md](INSTALL.md) · Full manual: [GUIDE.md](GUIDE.md)
+Docs site: https://dnd-world.github.io/Crafter-pricer/ (with a live price calculator) · Full setup: [INSTALL.md](INSTALL.md) · Full manual: [GUIDE.md](GUIDE.md)
 
 ## Screenshots
 

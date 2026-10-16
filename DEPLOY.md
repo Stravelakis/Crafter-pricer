@@ -27,6 +27,10 @@
 
 Source: [Pages build configuration](https://developers.cloudflare.com/pages/configuration/build-configuration/), [Pages build image](https://developers.cloudflare.com/pages/configuration/build-image/).
 
+## Docs site
+
+https://dnd-world.github.io/Crafter-pricer/ — built from `docs-site/` by `.github/workflows/docs-site.yml` on every `v*` tag, or by hand (Actions → Deploy docs site → Run workflow). One-time: Settings → Pages → Source: **GitHub Actions**; Settings → Environments → `github-pages` → allow tags `v*`.
+
 ## Environment variables
 
 None for the app (see `.env.example`). Only the two build variables above.

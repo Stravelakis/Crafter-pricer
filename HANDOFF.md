@@ -11,7 +11,8 @@ MarginCraft is a browser-only pricing studio for makers with 3D printers, UV pri
 - **Works:** pricing engine, presets, machine fleet, competitor search (4 providers), market intel, offer letters, Google Sheets log with secret, CSV export. Verified in a browser with no console errors.
 - **Fixed in 0.2.0:** presumptive tax charged a full flat bracket fee on every quote; European price formats were misread; market results were lost on refresh; the Sheets bridge accepted writes from anyone with the URL; fonts loaded from Google.
 - **Test suite:** yes — `bun run test` (32 tests) plus `bun run lint`, `bun run typecheck`, CI on every PR.
-- **Not hosted:** Cloudflare Pages chosen; project not created yet (owner step, see DEPLOY.md).
+- **Not hosted:** Cloudflare Pages chosen; project not created yet (see DEPLOY.md).
+- **Docs site:** built and checked locally; GitHub Pages not switched on yet (repo setting, see Open questions).
 
 ## Next steps, in order
 
@@ -44,6 +45,7 @@ bun run test
 | `src/index.css` | Colour tokens, fonts, panels, animations, reduced-motion rules |
 | `src/lib/*.test.ts` | Tests |
 | `docs/screenshots/` | README images |
+| `docs-site/` | Docs website (Astro, own `package.json`, npm). Deployed by `.github/workflows/docs-site.yml` on `v*` tags or by hand |
 
 ## Decisions and why
 
@@ -77,3 +79,4 @@ Names only. The app itself needs none (see `.env.example`); users' keys stay in 
 
 - Final public name: MarginCraft or Crafter-pricer?
 - Custom domain for the hosted version?
+- GitHub Pages on a private repo needs a paid GitHub plan; on the free plan the docs site needs the repo public or another host.

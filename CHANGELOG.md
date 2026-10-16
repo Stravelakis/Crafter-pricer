@@ -12,6 +12,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), version
 - Secret for the Google Sheets bridge, with a reset button.
 - 32 automated tests (pricing maths, taxes, price reading, CSV export), ESLint, Prettier, CI on every PR.
 - Repo standards files: HANDOFF, GUIDE, INSTALL, DEPLOY, STANDARDS, CONNECT-AGENTS, SECURITY, CODE_OF_CONDUCT, LICENSE, NOTICE, templates, Dependabot, secret-scan hook.
+- Docs site (`docs-site/`, GitHub Pages) with Dev / English / ELI5 reading levels, screenshots, share card and a live calculator running the real pricing engine.
 - Semantic colour tokens (`primary`, `accent`, `destructive`, …) on top of the existing palette.
 
 ### Changed
