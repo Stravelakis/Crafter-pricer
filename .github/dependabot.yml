@@ -9,6 +9,14 @@ updates:
       dependencies:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Major versions (React 19, TypeScript 7, Vite 8…) can break the app:
+    # they are done by hand on their own branch, never in the weekly batch.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # The docs site has its own npm package (docs-site/package-lock.json).
   - package-ecosystem: "npm"
