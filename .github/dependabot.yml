@@ -1,11 +1,22 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
+  # The app uses bun (bun.lock). Dependabot reads it with the "bun" ecosystem.
+  - package-ecosystem: "bun"
     directory: "/"
     schedule:
       interval: "weekly"
     groups:
       dependencies:
+        patterns:
+          - "*"
+
+  # The docs site has its own npm package (docs-site/package-lock.json).
+  - package-ecosystem: "npm"
+    directory: "/docs-site"
+    schedule:
+      interval: "weekly"
+    groups:
+      docs-dependencies:
         patterns:
           - "*"
 
