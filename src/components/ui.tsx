@@ -242,6 +242,10 @@ const SCRAMBLE_CHARS = "!<>-_\\/[]{}—=+*^?#________";
 export function ScrambleText({ text, className = "" }: { text: string; className?: string }) {
   const [display, setDisplay] = useState(text);
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setDisplay(text);
+      return;
+    }
     let frame = 0;
     const id = window.setInterval(() => {
       frame++;

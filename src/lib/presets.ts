@@ -2,7 +2,6 @@ import type {
   Integrations,
   Preset,
   ResearchEntry,
-  Settings,
   TaxBracket,
 } from "../types";
 
@@ -45,6 +44,7 @@ export const DEFAULT_PRESETS: Preset[] = [
       profitTaxPct: 18,
       regime: "profit",
       brackets: brackets([[0, "percent", 18]]),
+      presumptiveRevenue: 12000,
       marketingMonthly: 25,
     },
     job: {
@@ -118,6 +118,7 @@ export const DEFAULT_PRESETS: Preset[] = [
       profitTaxPct: 26,
       regime: "profit",
       brackets: brackets([[0, "percent", 26]]),
+      presumptiveRevenue: 60000,
       marketingMonthly: 380,
     },
     job: {
@@ -207,6 +208,7 @@ export const DEFAULT_PRESETS: Preset[] = [
         [100000, "percent", 4],
         [0, "percent", 8],
       ]),
+      presumptiveRevenue: 180000,
       marketingMonthly: 950,
     },
     job: {
@@ -265,7 +267,15 @@ export const DEFAULT_INTEGRATIONS: Integrations = {
   cfToken: "",
   cfModel: "@cf/black-forest-labs/flux.1-schnell",
   sheetsWebhook: "",
+  sheetsSecret: "",
 };
+
+/** random secret for the Sheets bridge; crypto-strength so it can't be guessed */
+export function newSheetsSecret(): string {
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 export const DEFAULT_OFFER_TEMPLATE = `# Offer — {{item}}
 

@@ -1,7 +1,6 @@
 import type { Finding, Integrations, SearchProvider } from "../types";
-import { fmtMoney } from "../lib/calc";
 import type { Currency } from "../types";
-import { Field, HelpTip, Icon, Reveal, Section, Seg, Spinner, TextArea } from "./ui";
+import { Field, HelpTip, Icon, Reveal, Section, Spinner, TextArea } from "./ui";
 
 const PROVIDER_LABEL: Record<SearchProvider, string> = {
   tavily: "Tavily",

@@ -18,6 +18,17 @@
   --color-amber: #b57d0a;
   --color-danger: #b23a2e;
 
+  /* semantic names (same scheme as langplay); new code should prefer these */
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-muted-foreground: var(--color-mute);
+  --color-border: var(--color-line);
+  --color-primary: var(--color-ember);
+  --color-primary-strong: var(--color-ember-deep);
+  --color-accent: var(--color-teal);
+  --color-warning: var(--color-amber);
+  --color-destructive: var(--color-danger);
+
   --shadow-press: 7px 7px 0 rgba(21, 33, 46, 0.09);
   --shadow-press-sm: 4px 4px 0 rgba(21, 33, 46, 0.09);
 }
@@ -244,4 +255,18 @@ input[type="number"] {
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(21, 33, 46, 0.3) transparent;
+}
+
+/* respect the system "reduce motion" setting everywhere */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

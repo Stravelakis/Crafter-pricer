@@ -1,0 +1,154 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import VernacularPanels from '../components/VernacularPanels.astro';
+import FeatureCards from '../components/FeatureCards.astro';
+import Carousel from '../components/Carousel.astro';
+import { siteConfig } from '../../site.config.ts';
+
+import { Content as Dev } from '../docs/dev.md';
+import { Content as Plain } from '../docs/plain.md';
+import { Content as Eli5 } from '../docs/eli5.md';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const shot = (name: string) => `${base}/screenshots/${name}`;
+
+const features = [
+  { icon: '🧮', title: 'True cost per unit', text: 'Machine wear, electricity, consumables, materials, your labor, a share of rent and bills, and the setup fee spread over the batch.' },
+  { icon: '📈', title: 'Margin or markup', text: 'Switch between them without the price moving, or type the price you want and get the percentage.' },
+  { icon: '🧾', title: 'Taxes done right', text: 'VAT on the invoice, income tax on profit, or presumptive revenue brackets at your real effective rate.' },
+  { icon: '🔎', title: 'Market check', text: 'Built-in price ranges for FDM, resin, UV and laser work, plus live competitor search with links.' },
+  { icon: '✉️', title: 'Offer letters', text: 'Turn any quote into a ready-to-send offer from your own template, in one click.' },
+  { icon: '🔒', title: 'Private by default', text: 'Everything stays in your browser. Bring your own AI and search keys; nothing goes anywhere you did not set up.' },
+];
+
+const slides = [
+  { title: 'The studio', caption: 'Your machines on the left, the job and its live price on the right.', image: shot('studio.png'), alt: 'MarginCraft studio with machine fleet, job ticket and price' },
+  { title: 'Your business, once', caption: 'Wage, bills, taxes and integrations, set once and used in every quote.', image: shot('settings.png'), alt: 'MarginCraft settings: labor, bills, tax, integrations' },
+  { title: 'On a phone', caption: 'The price comes first on small screens.', image: shot('phone.png'), alt: 'MarginCraft on a phone' },
+];
+---
+<DocsLayout title="Overview" home>
+  <section class="hero reveal" id="top">
+    <span class="eyebrow">Free · open source · runs in your browser</span>
+    <h1 class="hero-title">{siteConfig.projectName}</h1>
+    <p class="hero-sub">{siteConfig.description}</p>
+    <p class="hero-actions">
+      <a class="button primary" href="#try">Try the calculator</a>
+      <a class="button" href={siteConfig.repoUrl}>Source on GitHub</a>
+    </p>
+  </section>
+
+  <FeatureCards features={features} title="What MarginCraft does" />
+  <Carousel slides={slides} />
+
+  <section class="try reveal" id="try" aria-labelledby="try-title">
+    <h2 class="section-title" id="try-title">Try it — the real pricing engine, running here</h2>
+    <p class="muted">
+      This uses the same code as the app (<code>src/lib/calc.ts</code>), not a mock-up. Change any
+      number and the price updates. The full app adds overhead from your bills, taxes, presets,
+      market checks and offer letters.
+    </p>
+    <form class="calc" id="calc" aria-describedby="calc-out">
+      <fieldset>
+        <legend>Machine</legend>
+        <label>Purchase cost <input name="purchase" type="number" min="0" step="10" value="800" /></label>
+        <label>Expected life (months) <input name="life" type="number" min="1" step="1" value="36" /></label>
+        <label>Hours used per month <input name="hours" type="number" min="1" step="1" value="60" /></label>
+        <label>Power draw (watts) <input name="watts" type="number" min="0" step="10" value="250" /></label>
+        <label>Electricity price per kWh <input name="kwh" type="number" min="0" step="0.01" value="0.25" /></label>
+      </fieldset>
+      <fieldset>
+        <legend>Job (per piece)</legend>
+        <label>Machine hours <input name="mh" type="number" min="0" step="0.1" value="3" /></label>
+        <label>Your hands-on hours <input name="lh" type="number" min="0" step="0.05" value="0.5" /></label>
+        <label>Your hourly wage <input name="wage" type="number" min="0" step="1" value="20" /></label>
+        <label>Materials <input name="mat" type="number" min="0" step="0.1" value="4" /></label>
+        <label>Margin % <input name="margin" type="number" min="0" max="95" step="1" value="45" /></label>
+      </fieldset>
+    </form>
+    <div class="calc-out" id="calc-out" aria-live="polite">
+      <div><span>True cost per piece</span><b data-out="cost">–</b></div>
+      <div><span>Machine wear + running, per hour</span><b data-out="rate">–</b></div>
+      <div class="big"><span>Price per piece</span><b data-out="price">–</b></div>
+      <div><span>Profit per piece</span><b data-out="profit">–</b></div>
+    </div>
+  </section>
+
+  <section class="get reveal" id="get" aria-labelledby="get-title">
+    <h2 class="section-title" id="get-title">Get it</h2>
+    <ol class="steps">
+      <li>Install <a href="https://bun.sh">Bun</a>.</li>
+      <li>Download the code from <a href={siteConfig.repoUrl}>GitHub</a>.</li>
+      <li>In that folder run <code>bun install</code>, then <code>bun run dev</code>, and open <code>http://localhost:26419</code>.</li>
+    </ol>
+    <p class="muted">A hosted web version is planned. Your data always stays in your own browser.</p>
+  </section>
+
+  <section class="doc-body reveal" id="docs" aria-label="Documentation">
+    <VernacularPanels>
+      <Dev slot="dev" />
+      <Plain slot="plain" />
+      <Eli5 slot="eli5" />
+    </VernacularPanels>
+  </section>
+</DocsLayout>
+
+<script>
+  import { computeQuote, fmtMoney } from '../../../src/lib/calc';
+  import type { Job, Machine, Settings } from '../../../src/types';
+
+  const form = document.getElementById('calc') as HTMLFormElement | null;
+  const out = (key: string) => document.querySelector<HTMLElement>(`[data-out="${key}"]`);
+
+  const update = () => {
+    if (!form) return;
+    const v = (name: string) => Number((form.elements.namedItem(name) as HTMLInputElement).value) || 0;
+    const machine: Machine = {
+      id: 'demo', name: 'Demo', type: 'fdm',
+      purchaseCost: v('purchase'), salvageValue: 0,
+      lifespanMonths: Math.max(1, v('life')), hoursPerMonth: Math.max(1, v('hours')),
+      watts: v('watts'), consumablesPerHour: 0, maintenancePerMonth: 0,
+    };
+    const settings: Settings = {
+      currency: 'EUR', hourlyWage: v('wage'), laborBurdenPct: 0, electricityRate: v('kwh'),
+      rent: 0, utilities: 0, software: 0, insurance: 0, otherBills: 0, billableHours: 0,
+      vatPct: 0, profitTaxPct: 0, regime: 'profit', brackets: [], presumptiveRevenue: 0, marketingMonthly: 0,
+    };
+    const job: Job = {
+      name: 'Demo', machineId: 'demo', machineHours: v('mh'), laborHours: v('lh'),
+      materialCost: v('mat'), setupFee: 0, quantity: 1, marginMode: 'margin', marginPct: v('margin'),
+      benchmarkId: '', benchmarkUnits: 1,
+    };
+    const q = computeQuote(job, machine, settings);
+    const money = (n: number) => fmtMoney(n, 'EUR');
+    out('cost')!.textContent = money(q.unitCost);
+    out('rate')!.textContent = `${money(q.machineRate)}/h`;
+    out('price')!.textContent = money(q.unitPrice);
+    out('profit')!.textContent = money(q.unitPrice - q.unitCost);
+  };
+
+  form?.addEventListener('input', update);
+  update();
+</script>
+
+<style>
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+  .button { display: inline-block; padding: 10px 18px; border-radius: 10px; border: 1px solid rgba(130, 216, 183, 0.5); color: inherit; text-decoration: none; font-weight: 600; }
+  .button.primary { background: #82d8b7; color: #0b0f2a; border-color: #82d8b7; }
+  .button:hover { filter: brightness(1.1); }
+  .try, .get { margin: 64px 0; }
+  .muted { opacity: 0.8; max-width: 70ch; }
+  .steps { line-height: 1.9; }
+  .calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 20px; }
+  .calc fieldset { border: 1px solid rgba(130, 216, 183, 0.3); border-radius: 14px; padding: 14px 16px 6px; margin: 0; background: rgba(11, 15, 42, 0.55); }
+  .calc legend { padding: 0 6px; font-weight: 600; color: #82d8b7; }
+  .calc label { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 0.95rem; }
+  .calc input { width: 7.5em; padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(130, 216, 183, 0.4); background: rgba(4, 4, 16, 0.6); color: inherit; font: inherit; text-align: right; }
+  .calc input:focus-visible { outline: 2px solid #82d8b7; outline-offset: 2px; }
+  .calc-out { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 16px; }
+  .calc-out div { border-radius: 12px; padding: 12px 14px; background: rgba(52, 64, 128, 0.35); display: flex; flex-direction: column; gap: 4px; }
+  .calc-out span { font-size: 0.85rem; opacity: 0.8; }
+  .calc-out b { font-size: 1.25rem; }
+  .calc-out .big { background: rgba(66, 169, 164, 0.35); }
+  .calc-out .big b { font-size: 1.6rem; color: #82d8b7; }
+</style>

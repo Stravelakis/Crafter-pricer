@@ -104,15 +104,55 @@ export async function searchWeb(
 
 /* ---------------- price extraction ---------------- */
 
-export function extractPrice(text: string): number | null {
-  const re =
-    /(?:[$€£]\s?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?)|(?:\b\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?\s?(?:USD|EUR|GBP|dollars?|bucks)\b)/gi;
-  const hits = text.match(re) || [];
-  for (const h of hits) {
-    const n = parseFloat(h.replace(/[^0-9.,]/g, "").replace(/,(?=\d{3})/g, ""));
-    if (n >= 0.5 && n <= 250000) return n;
+const PRICE_MIN = 0.5;
+const PRICE_MAX = 250000;
+const NUMBER = String.raw`(?:\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)(?!\d)`;
+const PRICE_PATTERN = new RegExp(
+  String.raw`(?:[$€£]\s?(${NUMBER}))|(?:\b(${NUMBER})\s?(?:[$€£]|USD|EUR|GBP|dollars?|euros?|pounds?|bucks)(?![a-z]))`,
+  "gi",
+);
+/** words around a number that mean it is not the item's price */
+const NOT_A_PRICE_BEFORE = /(save|saving|shipping|delivery|coupon|voucher|cashback)\W*$/i;
+const NOT_A_PRICE_AFTER = /^\s*(off|discount|shipping|delivery)/i;
+
+/**
+ * Reads one number written in US style (1,234.56) or European style (1.234,56).
+ * The last separator is the decimal point only when 1–2 digits follow it.
+ */
+export function parsePriceNumber(raw: string): number | null {
+  const s = raw.replace(/\s/g, "");
+  const lastSep = Math.max(s.lastIndexOf("."), s.lastIndexOf(","));
+  let normalized: string;
+  if (lastSep === -1) {
+    normalized = s;
+  } else {
+    const decimals = s.length - lastSep - 1;
+    const intPart = s.slice(0, lastSep).replace(/[.,]/g, "");
+    normalized = decimals === 3 ? intPart + s.slice(lastSep + 1) : `${intPart}.${s.slice(lastSep + 1)}`;
   }
-  return null;
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** every plausible price in a piece of text, in reading order */
+export function extractPrices(text: string): number[] {
+  const out: number[] = [];
+  for (const m of text.matchAll(PRICE_PATTERN)) {
+    const before = text.slice(Math.max(0, m.index - 16), m.index);
+    const after = text.slice(m.index + m[0].length, m.index + m[0].length + 12);
+    if (NOT_A_PRICE_BEFORE.test(before) || NOT_A_PRICE_AFTER.test(after)) continue;
+    const n = parsePriceNumber(m[1] ?? m[2] ?? "");
+    if (n !== null && n >= PRICE_MIN && n <= PRICE_MAX) out.push(n);
+  }
+  return out;
+}
+
+/**
+ * The listing's price: a price in the title beats one in the snippet,
+ * because snippets often mix in shipping, other variants or related items.
+ */
+export function extractPrice(title: string, snippet = ""): number | null {
+  return extractPrices(title)[0] ?? extractPrices(snippet)[0] ?? null;
 }
 
 export function vendorFrom(title: string): string {
@@ -243,27 +283,41 @@ export function downloadFile(name: string, content: string, mime = "text/markdow
 
 /* ---------------- Google Sheets bridge ---------------- */
 
-export const SHEETS_SCRIPT = `/** MarginCraft → Google Sheets bridge.
+/** Apps Script bridge with this app's secret baked in; requests without it are refused. */
+export function sheetsScript(secret: string): string {
+  return `/** MarginCraft → Google Sheets bridge.
  *  1) script.google.com → New project → paste → Deploy → Web app.
- *  2) Execute as: Me · Access: Anyone. Copy the Web App URL into MarginCraft. */
+ *  2) Execute as: Me · Access: Anyone. Copy the Web App URL into MarginCraft.
+ *  The URL is public, so every request must carry the secret below.
+ *  If you reset the secret in MarginCraft, paste the new script and redeploy. */
+var SECRET = '${secret}';
+
 function doPost(e) {
+  var d;
+  try { d = JSON.parse(e.postData.contents); } catch (err) { return reply({ ok: false, error: 'bad request' }); }
+  if (!SECRET || d.secret !== SECRET) return reply({ ok: false, error: 'unauthorized' });
   var lock = LockService.getScriptLock();
   lock.tryLock(10000);
-  var d = JSON.parse(e.postData.contents);
   var props = PropertiesService.getScriptProperties();
-  var id = props.getProperty('mc_ss_id');
+  var id = d.fileId || props.getProperty('mc_ss_id');
   var ss;
   try { ss = id ? SpreadsheetApp.openById(id) : null; } catch (err) { ss = null; }
   if (!ss) { ss = SpreadsheetApp.create('MarginCraft pricing log'); props.setProperty('mc_ss_id', ss.getId()); }
   (d.rows || []).forEach(function (r) {
-    var sh = ss.getSheetByName(r.machine) || ss.insertSheet(r.machine.slice(0, 90));
+    var name = String(r.machine || 'General').slice(0, 90);
+    var sh = ss.getSheetByName(name) || ss.insertSheet(name);
     if (sh.getLastRow() === 0)
       sh.appendRow(['Date', 'Item', 'My unit price', 'My order total', 'My cost', 'Market low', 'Market high', 'Sources']);
     sh.appendRow([r.date, r.item, r.myUnit, r.myTotal, r.myCost, r.mLow, r.mHigh, r.sources]);
   });
-  return ContentService.createTextOutput(JSON.stringify({ ok: true, url: ss.getUrl() }))
-    .setMimeType(ContentService.MimeType.JSON);
+  lock.releaseLock();
+  return reply({ ok: true, url: ss.getUrl() });
+}
+
+function reply(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }`;
+}
 
 export function rowsToCsv(rows: SheetRow[]): string {
   const head = "Date,Machine,Item,My unit price,My order total,My cost,Market low,Market high,Sources";
@@ -275,10 +329,17 @@ export function rowsToCsv(rows: SheetRow[]): string {
   return [head, ...body].join("\n");
 }
 
-export async function pushToSheets(webhook: string, rows: SheetRow[]): Promise<void> {
-  await fetch(webhook, {
+export async function pushToSheets(
+  webhook: string,
+  secret: string,
+  fileId: string | undefined,
+  rows: SheetRow[],
+): Promise<void> {
+  const r = await fetch(webhook, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ rows }),
+    body: JSON.stringify({ secret, fileId: fileId || undefined, rows }),
   });
+  const d = await r.json().catch(() => null);
+  if (!r.ok || !d?.ok) throw new Error(d?.error === "unauthorized" ? "unauthorized" : "failed");
 }

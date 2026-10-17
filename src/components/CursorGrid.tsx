@@ -37,6 +37,11 @@ export default function CursorGrid({
     const pulses: { x: number; y: number; t0: number }[] = [];
     let mouse = { x: -9999, y: -9999 };
     let raf = 0;
+    let lastMove = 0;
+    // the loop only runs while something is lit, so an idle page costs nothing
+    const kick = () => {
+      if (!reduced && !raf) raf = requestAnimationFrame(frame);
+    };
 
     const resize = () => {
       w = window.innerWidth;
@@ -84,17 +89,20 @@ export default function CursorGrid({
 
     const onMove = (e: PointerEvent) => {
       mouse = { x: e.clientX, y: e.clientY };
+      lastMove = performance.now();
+      kick();
     };
     const onClick = (e: PointerEvent) => {
       pulses.push({ x: e.clientX, y: e.clientY, t0: performance.now() });
       if (pulses.length > 6) pulses.shift();
+      kick();
     };
 
     const frame = () => {
       const now = performance.now();
       ctx.clearRect(0, 0, w, h);
 
-      if (mouse.x > -999) lightNear(mouse.x, mouse.y, radius, now);
+      if (mouse.x > -999 && now - lastMove < holdTime) lightNear(mouse.x, mouse.y, radius, now);
 
       for (let i = pulses.length - 1; i >= 0; i--) {
         const p = pulses[i];
@@ -127,14 +135,13 @@ export default function CursorGrid({
         ctx.strokeRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1);
       });
       ctx.globalAlpha = 1;
-      raf = requestAnimationFrame(frame);
+      raf = lit.size || pulses.length ? requestAnimationFrame(frame) : 0;
     };
 
     resize();
     window.addEventListener("resize", resize);
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerdown", onClick);
-    if (!reduced) raf = requestAnimationFrame(frame);
 
     return () => {
       cancelAnimationFrame(raf);

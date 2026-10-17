@@ -1,5 +1,5 @@
 import type { Currency, Job, Machine, Quote } from "../types";
-import { convertPct, fmtMoney, fmtNum, MODE_MAX } from "../lib/calc";
+import { convertPct, fmtMoney, MODE_MAX } from "../lib/calc";
 import { AnimatedNumber, Field, HelpTip, Icon, NumInput, Reveal, Seg, Slider, SelectInput, TextInput } from "./ui";
 
 export default function JobTicket({

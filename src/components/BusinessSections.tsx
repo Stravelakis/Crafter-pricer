@@ -198,6 +198,22 @@ export function TaxSection({ settings, onPatch }: { settings: Settings; onPatch:
                 </p>
               </div>
             </Field>
+            <div className="mt-4">
+              <Field label="Expected period revenue" help="tPresRevenue" hint="month or year">
+                <NumInput
+                  value={settings.presumptiveRevenue}
+                  onChange={(n) => onPatch({ presumptiveRevenue: n })}
+                  prefix="$"
+                  step={1000}
+                  min={0}
+                />
+              </Field>
+              {settings.regime === "presumptive" && !(settings.presumptiveRevenue > 0) && (
+                <p className="mt-1.5 text-[10px] leading-relaxed text-danger">
+                  Not set — each job is taxed as if it were your whole period's revenue, which overstates flat-fee tiers.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </Section>

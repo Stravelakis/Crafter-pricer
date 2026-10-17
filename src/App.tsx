@@ -16,6 +16,7 @@ import {
   DEFAULT_OFFER_TEMPLATE,
   DEFAULT_PRESETS,
   DEFAULT_RESEARCH,
+  newSheetsSecret,
   uid,
 } from "./lib/presets";
 import {
@@ -54,7 +55,13 @@ interface Persisted {
   activePresetId: string;
   offerTemplate: string;
   offerDefaults: typeof DEFAULT_OFFER_DEFAULTS;
+  /** last market search, kept so a page refresh doesn't lose it */
+  findings: Finding[];
+  query: string;
 }
+
+const withSheetsSecret = (i: Integrations): Integrations =>
+  i.sheetsSecret ? i : { ...i, sheetsSecret: newSheetsSecret() };
 
 function boot(): Persisted {
   const base = DEFAULT_PRESETS[1];
@@ -63,11 +70,13 @@ function boot(): Persisted {
     machines: base.machines,
     job: base.job,
     research: DEFAULT_RESEARCH,
-    integrations: DEFAULT_INTEGRATIONS,
+    integrations: withSheetsSecret(DEFAULT_INTEGRATIONS),
     presets: DEFAULT_PRESETS,
     activePresetId: "pro",
     offerTemplate: DEFAULT_OFFER_TEMPLATE,
     offerDefaults: DEFAULT_OFFER_DEFAULTS,
+    findings: [],
+    query: "",
   };
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -78,11 +87,13 @@ function boot(): Persisted {
       machines: Array.isArray(p.machines) ? (p.machines as Machine[]) : fallback.machines,
       job: { ...fallback.job, ...(p.job ?? {}) },
       research: Array.isArray(p.research) ? (p.research as ResearchEntry[]) : fallback.research,
-      integrations: { ...fallback.integrations, ...(p.integrations ?? {}) },
+      integrations: withSheetsSecret({ ...fallback.integrations, ...(p.integrations ?? {}) }),
       presets: Array.isArray(p.presets) && p.presets.length ? (p.presets as Preset[]) : fallback.presets,
       activePresetId: p.activePresetId ?? "pro",
       offerTemplate: p.offerTemplate ?? DEFAULT_OFFER_TEMPLATE,
       offerDefaults: { ...DEFAULT_OFFER_DEFAULTS, ...(p.offerDefaults ?? {}) },
+      findings: Array.isArray(p.findings) ? (p.findings as Finding[]) : fallback.findings,
+      query: typeof p.query === "string" ? p.query : fallback.query,
     };
   } catch {
     return fallback;
@@ -104,8 +115,8 @@ export default function App() {
   const [offerTemplate, setOfferTemplate] = useState(init.offerTemplate);
   const [offerDefaults, setOfferDefaults] = useState(init.offerDefaults);
 
-  const [findings, setFindings] = useState<Finding[]>([]);
-  const [query, setQuery] = useState("");
+  const [findings, setFindings] = useState<Finding[]>(init.findings);
+  const [query, setQuery] = useState(init.query);
   const [researching, setResearching] = useState(false);
   const [researchError, setResearchError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -123,6 +134,7 @@ export default function App() {
   useEffect(() => {
     const data: Persisted = {
       settings, machines, job, research, integrations, presets, activePresetId, offerTemplate, offerDefaults,
+      findings, query,
     };
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(data));
@@ -135,7 +147,7 @@ export default function App() {
         );
       } catch { /* give up silently */ }
     }
-  }, [settings, machines, job, research, integrations, presets, activePresetId, offerTemplate, offerDefaults]);
+  }, [settings, machines, job, research, integrations, presets, activePresetId, offerTemplate, offerDefaults, findings, query]);
 
   const say = (msg: string) => {
     setToast(msg);
@@ -251,7 +263,7 @@ export default function App() {
         query: query.trim(),
         item: r.title,
         vendor: vendorFrom(r.title),
-        price: extractPrice(`${r.title} ${r.snippet}`),
+        price: extractPrice(r.title, r.snippet),
         sym,
         url: r.url,
         provider: integrations.provider,
@@ -311,11 +323,15 @@ export default function App() {
     if (integrations.sheetsWebhook) {
       setSyncing(true);
       try {
-        await pushToSheets(integrations.sheetsWebhook, rows);
+        await pushToSheets(integrations.sheetsWebhook, integrations.sheetsSecret, integrations.sheetsFileId, rows);
         setIntegrations((i) => ({ ...i, sheetsLastSync: new Date().toISOString() }));
         say("Logged to Google Sheets ✓");
-      } catch {
-        say("Sheets sync failed — check the Web App URL in Settings");
+      } catch (e) {
+        say(
+          e instanceof Error && e.message === "unauthorized"
+            ? "Sheets refused the secret — copy the bridge script again and redeploy it"
+            : "Sheets sync failed — check the Web App URL in Settings",
+        );
       } finally {
         setSyncing(false);
       }

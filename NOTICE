@@ -1,0 +1,19 @@
+Crafter-pricer (MarginCraft)
+Copyright (c) 2026 Lambros Stravelakis
+
+This product includes third-party work:
+
+- Fonts: Space Grotesk (Florian Karsten), IBM Plex Sans and IBM Plex Mono (IBM),
+  packaged by Fontsource (https://fontsource.org).
+  License: SIL Open Font License 1.1. Used for: app typography, self-hosted.
+
+- The background cursor grid (src/components/CursorGrid.tsx) follows the style of the
+  React Bits "Cursor Grid" effect (https://reactbits.dev, MIT + Commons Clause v1.0).
+  Credited here; the effect is not sold or redistributed on its own.
+
+- Docs site (docs-site/): Stravelakis docs theme with the React Bits "Dot Field" background
+  (MIT + Commons Clause v1.0) and the Sora font (SIL OFL 1.1); details in docs-site/NOTICE.
+
+- React (https://react.dev), Copyright (c) Meta Platforms, Inc. License: MIT.
+
+- Tailwind CSS (https://tailwindcss.com), Copyright (c) Tailwind Labs, Inc. License: MIT.
