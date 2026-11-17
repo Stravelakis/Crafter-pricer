@@ -15,7 +15,7 @@ Not hosted yet. Once it is, nothing to install: open the link in README.md.
 ### Steps
 
 ```bash
-git clone https://github.com/DnD-World/Crafter-pricer.git
+git clone https://github.com/Stravelakis/Crafter-pricer.git
 cd Crafter-pricer
 git config core.hooksPath githooks
 bun install

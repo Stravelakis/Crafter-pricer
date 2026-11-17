@@ -9,7 +9,7 @@
 ## Setup
 
 ```bash
-git clone https://github.com/DnD-World/Crafter-pricer.git
+git clone https://github.com/Stravelakis/Crafter-pricer.git
 cd Crafter-pricer
 git config core.hooksPath githooks
 bun install

@@ -12,7 +12,7 @@ export const siteConfig = {
   projectName: "MarginCraft",
   description:
     "Price 3D prints, UV prints, laser and CNC jobs so every order pays you: machine wear, electricity, materials, your time, rent, VAT and income tax in one quote, next to what competitors charge.",
-  repoUrl: "https://github.com/DnD-World/Crafter-pricer",
+  repoUrl: "https://github.com/Stravelakis/Crafter-pricer",
   // Path under /public including the base path, e.g. '/repo-name/favicon.svg'. Empty = no favicon tag.
   faviconHref: "/Crafter-pricer/favicon.png",
 

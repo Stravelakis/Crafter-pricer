@@ -6,7 +6,7 @@
 
 ### One-time setup (owner)
 
-1. Cloudflare dashboard → **Workers & Pages** → **Create application** → **Pages** → **Import an existing Git repository** → pick `DnD-World/Crafter-pricer`.
+1. Cloudflare dashboard → **Workers & Pages** → **Create application** → **Pages** → **Import an existing Git repository** → pick `Stravelakis/Crafter-pricer`.
 2. Build settings:
 
    | Setting | Value |
@@ -29,7 +29,7 @@ Source: [Pages build configuration](https://developers.cloudflare.com/pages/conf
 
 ## Docs site
 
-https://dnd-world.github.io/Crafter-pricer/ — built from `docs-site/` by `.github/workflows/docs-site.yml` on every `v*` tag, or by hand (Actions → Deploy docs site → Run workflow). One-time: Settings → Pages → Source: **GitHub Actions**; Settings → Environments → `github-pages` → allow tags `v*`.
+https://docs.stravelakis.com/Crafter-pricer/ — built from `docs-site/` by `.github/workflows/docs-site.yml` on every `v*` tag, or by hand (Actions → Deploy docs site → Run workflow). One-time: Settings → Pages → Source: **GitHub Actions**; Settings → Environments → `github-pages` → allow tags `v*`.
 
 ## Environment variables
 

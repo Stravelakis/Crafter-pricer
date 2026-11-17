@@ -1,6 +1,6 @@
 # Crafter-pricer (MarginCraft)
 
-[![CI](https://github.com/DnD-World/Crafter-pricer/actions/workflows/ci.yml/badge.svg)](https://github.com/DnD-World/Crafter-pricer/actions/workflows/ci.yml)
+[![CI](https://github.com/Stravelakis/Crafter-pricer/actions/workflows/ci.yml/badge.svg)](https://github.com/Stravelakis/Crafter-pricer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.2.0-orange)](CHANGELOG.md)
 
@@ -28,7 +28,7 @@ Most makers price by gut feeling or by copying Etsy. Machine wear, the electrici
 - **Web:** not hosted yet (planned: Cloudflare Pages, see [DEPLOY.md](DEPLOY.md)).
 - **From source:** `bun install` then `bun run dev` → http://localhost:26419
 
-Docs site: https://dnd-world.github.io/Crafter-pricer/ (with a live price calculator) · Full setup: [INSTALL.md](INSTALL.md) · Full manual: [GUIDE.md](GUIDE.md)
+Docs site: https://docs.stravelakis.com/Crafter-pricer/ (with a live price calculator) · Full setup: [INSTALL.md](INSTALL.md) · Full manual: [GUIDE.md](GUIDE.md)
 
 ## Screenshots
 
