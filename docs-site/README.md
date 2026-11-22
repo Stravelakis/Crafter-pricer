@@ -2,7 +2,7 @@
 
 The shared docs-site theme for every published repo (see `STANDARDS.md` §7 in repo-standards).
 
-Dark, animated, in the Stravelakis logo colors: React Bits Dot Field backgrounds (page and sidebar), a Dev / English / ELI5 reading-level switch under the project name, animated menu with section tracking, tilt cards, an autoplay carousel, and an optional sandboxed playground.
+Dark, animated, same look as docs.stravelakis.com (v2, 21 Nov 2026): the hub's drifting-dot background, pairing bar with scroll progress, a Dev / English / ELI5 reading-level switch under the project name, animated menu with section tracking, tilt cards, an autoplay carousel, and an optional sandboxed playground.
 
 One codebase. A project without a real playground sets `playground.enabled: false`; nothing else changes.
 
@@ -41,3 +41,16 @@ One codebase. A project without a real playground sets `playground.enabled: fals
 ## Licenses
 
 MIT for this theme. The Dot Field port is MIT + Commons Clause (React Bits); see `NOTICE`.
+
+## Built in (2026-10-18)
+
+- **One source:** `npm run dev` / `build` first run `scripts/sync-docs.mjs`, which copies the repo's `GUIDE.md` and `INSTALL.md` (repo root = `..`, override with `DOCS_SOURCE_ROOT`) into Install and Guide sections. No text lives only on the site.
+- **English first:** `defaultVernacular: 'plain'` in `site.config.ts`. A reader's saved choice still wins.
+- **Review stamp:** put `checkedAgainst: vX.Y.Z` and `checkedOn: YYYY-MM-DD` in the front matter of `src/docs/dev.md`, `plain.md`, `eli5.md`. Missing = a visible "Not reviewed yet" note.
+- **Jargon tooltips + explainers:** terms from `<repo>/docs/glossary.yml` (starter: `templates/docs/glossary.yml`). Hover, tap or keyboard focus; text follows the reading level. Never inside code blocks or headings.
+- **Feedback:** set `feedbackUrl` to the project's Tally form → "Send feedback" in the sidebar.
+
+## v2 (21 Nov 2026)
+
+Pilot: Image Forge (PR 16). Hub fonts (Unbounded, Figtree, JetBrains Mono, self-hosted), compact doc typography, level cards under the hero (`levelCards` in `site.config.ts`), hero buttons and chips (`heroLinks`, `heroPills`), sticky level switch, per-level "On this page" menu, callouts (blockquote starting with a bold label: "Do this first", "Watch out", "Why", "Try it"), numbered steps, click-open boxes (`<details>`), copy buttons. Glossary tooltips underline each term once per level; "What's this?" boxes are per level and hidden in Dev.
+Old v1 kept in `CLAUDE SPACE/z olds/docs-theme-before-2026-11-21`. Roll out to a repo by copying the theme-owned files (layout, components, scripts, styles, sync-docs, package.json) and keeping the repo's own `site.config.ts`, `public/`, `astro.config.mjs` and `src/docs/*.md`.

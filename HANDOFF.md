@@ -80,3 +80,20 @@ Names only. The app itself needs none (see `.env.example`); users' keys stay in 
 - Final public name: MarginCraft or Crafter-pricer?
 - Custom domain for the hosted version?
 - GitHub Pages on a private repo needs a paid GitHub plan; on the free plan the docs site needs the repo public or another host.
+
+## 2026-11-21: docs site moved to the v2 theme (docs only)
+
+**What changed.** `docs-site/` now uses the shared v2 docs theme (dark look, Dev / English / ELI5 levels, level cards, glossary tooltips, review stamp). Rewrote `dev.md`, `plain.md`, `eli5.md`, added `docs/glossary.yml`, kept the live calculator (runs the real `src/lib/calc.ts`). Renamed one heading in `GUIDE.md` ("Features" → "What each screen does") so it no longer clashes with the page's own `#features` anchor. The workflow `docs-site.yml` needed no change (it already builds `docs-site/` with npm). No app code touched.
+
+**Stamps.** Pages say "Checked against v0.2.0 on 21 Nov 2026". v0.2.0 is not tagged or released (CHANGELOG: Unreleased), so the docs describe `main`.
+
+**Unreleased / undocumented.** Nothing beyond `main` is described. No hosted copy exists yet (DEPLOY.md), so no "open the app" link.
+
+**Product problems found (not fixed).**
+1. Input boxes always show `$` (JobTicket, MachinesSection, BusinessSections, MarketPanel) even when EUR or GBP is chosen.
+2. Margin to markup conversion cannot keep the price above 75% margin (markup cap 300).
+3. Settings field "Productive hours per month" has a minimum of 1, but the warning text elsewhere treats 0 as possible (only via old saved data).
+4. This file's "Current state" still says the docs site is not live and 32 tests; the site is live and the test count was not re-checked (about 25 literal test calls found).
+5. API keys are stored in plain text in browser storage; no CSP in `public/_headers`.
+
+**Claims not confirmed.** "Tavily and Firecrawl need no CORS setup" (from GUIDE.md, third-party behaviour); "works offline" (no service worker; true only once loaded); install time estimates on the ELI5 and English pages; the 32-test count.

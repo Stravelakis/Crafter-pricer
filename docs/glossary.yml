@@ -1,0 +1,198 @@
+# Jargon tooltips and ELI5 explainers for the MarginCraft (Crafter-pricer) docs site (STANDARDS.md §7).
+# Hover, tap or keyboard-focus a dotted word to read it at your reading level.
+# explainer: true -> a "What's this?" box the first time it appears in the
+# English and ELI5 levels (never in Dev).
+
+cost-plus pricing:
+  explainer: true
+  eli5: Working out what something really costs you to make, then adding on the profit you want. Cost first, profit on top. That total is your price.
+  english: Pricing from your own costs upwards (materials, machine, time, overhead), then adding a profit percentage. The opposite of copying a competitor's price.
+  dev: Price = unit cost adjusted by a margin or markup (computeQuote in src/lib/calc.ts). No demand curve, no competitor input; the market check is a separate comparison.
+
+true cost:
+  explainer: true
+  eli5: Everything one piece really costs you: the material, the machine wearing out, the electricity, your own time and a slice of the rent. Not just the price of the plastic.
+  english: What one unit costs once materials, machine time, your labour, your share of overheads and the setup fee are all counted.
+  dev: unitCost = uMaterials + uMachine + uLabor + uOverhead + uSetup, in Quote.unitCost.
+
+machine rate:
+  eli5: What it costs you for the machine to run for one hour, including the machine slowly wearing out and the electricity it eats.
+  english: The cost of one running hour of a machine. Depreciation plus electricity, consumables and a share of monthly maintenance.
+  dev: machinePerHour(m, s) = depPerHour(m) + runPerHour(m, s). Shown in the Job ticket as "Machine rate".
+
+depreciation:
+  explainer: true
+  eli5: A machine loses value as you use it. Depreciation spreads that loss over the hours you run it, so every job pays a tiny piece of the machine back.
+  english: The loss in a machine's value spread over its working hours. Here it is a straight line: (purchase cost minus buy-back value) divided by (months of life times hours used per month).
+  dev: depPerHour = max(0, purchaseCost - salvageValue) / (lifespanMonths * hoursPerMonth); 0 when that product is 0 or less. Straight-line, no tax-style schedules.
+
+buy-back value:
+  eli5: What you think you could sell the machine for when you replace it. A machine bought for 3800 that you could sell for 1900 only really "uses up" 1900.
+  english: Your estimate of what the machine will fetch (resale or trade-in) when you replace it. Only the drop in value, purchase minus buy-back, has to be earned back. The code calls it salvageValue.
+  dev: Machine.salvageValue. Subtracted from purchaseCost in depPerHour; not clamped above the purchase cost except through max(0, ...) on the difference.
+
+consumables:
+  eli5: Little parts that wear out while the machine works, like nozzles, resin film or laser lenses.
+  english: Wear parts used per running hour (nozzles, resin film, lenses, ink). Entered per hour in the machine card.
+  dev: Machine.consumablesPerHour, added to runPerHour.
+
+overhead:
+  explainer: true
+  eli5: The bills you pay even when you make nothing, like rent and software. Overhead shares those bills out across the hours you work so each job pays its part.
+  english: Your fixed monthly costs: rent, utilities, software, insurance, other bills and marketing. They are spread over your productive hours and added to every job.
+  dev: monthlyFixed(s) = rent + utilities + software + insurance + otherBills + marketingMonthly; overheadPerHour = monthlyFixed / billableHours (0 when billableHours is 0 or less).
+
+productive hours:
+  eli5: The hours each month when you are really working on orders, not waiting or tidying up. The monthly bills get divided by this number.
+  english: Your realistic working hours per month (machine time plus your hands-on time). The overhead rate is your monthly fixed costs divided by this.
+  dev: Settings.billableHours. The form label is "Productive hours per month".
+
+labor burden:
+  eli5: Extra costs that come with paying a worker, like payroll taxes. If you work alone it is usually zero.
+  english: A percentage added to your wage for employer costs (payroll tax, benefits). The wage times one plus the burden is your loaded labour rate.
+  dev: Settings.laborBurdenPct. laborRate = hourlyWage * (1 + laborBurdenPct / 100).
+
+margin:
+  explainer: true
+  eli5: Profit as a slice of the price you charge. A 50% margin means half of the price is profit. Price 100, cost 50, profit 50.
+  english: Profit as a share of the selling price. At 55% margin, 55 of every 100 you charge is profit, so price = cost divided by (1 minus margin). Capped at 95% in the app.
+  dev: marginMode "margin": unitPrice = unitCost / (1 - pct/100), with pct clamped to 0..MODE_MAX.margin = 95.
+
+markup:
+  explainer: true
+  eli5: Profit added on top of your cost, as a percentage of the cost. 50% markup on a cost of 100 gives a price of 150.
+  english: Profit as a percentage of your cost. At 50% markup, price = cost times 1.5. The same number gives a smaller profit share than margin (50% markup is about 33% margin). Capped at 300% in the app.
+  dev: marginMode "markup": unitPrice = unitCost * (1 + pct/100), pct clamped to 0..MODE_MAX.markup = 300. convertPct() switches modes at about the same price (margin above 75% hits the 300 markup cap; result rounded to 0.1).
+
+VAT:
+  eli5: A tax shop customers pay on top of your price. You collect it and pass it on to the government, so it is not your money.
+  english: Value-added or sales tax added on the invoice. The app adds it after the price (price times VAT %) and keeps it out of your profit.
+  dev: vat = totalPrice * vatPct / 100; invoiceTotal = totalPrice + vat. profit is computed from totalPrice, so VAT never enters it.
+
+income tax on profit:
+  eli5: A slice of what you earn that goes to the tax office. This way of counting takes a percentage of the profit left after costs.
+  english: The "On profit" regime: a percentage of each job's profit is set aside as income tax.
+  dev: profitTax = max(0, profit) * profitTaxPct / 100 when regime is "profit".
+
+presumptive tax:
+  explainer: true
+  eli5: A simple tax some countries use for small businesses. The tax office does not look at your costs. It looks at how much money came in and picks a rate from a table.
+  english: A tax worked out from your revenue using brackets, not from your profit. The app finds your bracket from your expected revenue for the period, turns it into a rate and charges each job that rate.
+  dev: presumptiveTaxForJob(jobRevenue, periodRevenue, brackets): rate = presumptiveTax(base, brackets) / base, where base is the period revenue (or the job revenue when none is set); tax = jobRevenue * rate.
+
+bracket:
+  eli5: One row in a tax table: "if you earn up to this much, the tax is this". A bigger income moves you to the next row.
+  english: One tier of the presumptive tax table: revenue up to a cap, taxed either as a percentage or a flat amount. A cap of 0 means "and above".
+  dev: TaxBracket { upTo, kind "percent" | "fixed", value }. Sorted by upTo (0 sorts last, as Infinity); the first bracket whose cap covers the revenue wins, else the highest one.
+
+effective rate:
+  eli5: The real percentage you end up paying once you divide the tax by the money that came in.
+  english: Tax divided by revenue. A flat 600 on 20,000 of revenue is an effective rate of 3%.
+  dev: Quote.presumptiveRatePct = presumptiveTax(base, brackets) / base * 100.
+
+benchmark:
+  eli5: A price from the real world that you compare yours with, like what other shops charge for the same thing.
+  english: A market price range you compare your quote against, either one of the built-in ranges or a price you logged yourself.
+  dev: Benchmark { low, high, unit }. The meter scales it by job.benchmarkUnits; "In market range" means totalPrice sits between low and high times units.
+
+market intel:
+  eli5: Your own notebook of prices you found out there, plus a starter list built into the app.
+  english: The panel that lists the built-in street-rate ranges and the prices you log or import from competitor research.
+  dev: ResearchEntry[] in browser storage plus the static BENCHMARKS in src/lib/market.ts (USD, indicative).
+
+preset:
+  eli5: A saved setup. One click and all your machines and settings come back, like loading a saved game.
+  english: A saved snapshot of your machines, settings and a sample job. Three ship with the app; you can save your own.
+  dev: Preset { machines, settings, job } deep-cloned on apply. Defaults live in DEFAULT_PRESETS (src/lib/presets.ts).
+
+offer letter:
+  eli5: A short, ready-to-send note to a customer that says what you will make and what it costs.
+  english: A Markdown text built from your template and the current quote. You can copy it or download it as a .md file.
+  dev: renderOffer(template, values) replaces {{name}} placeholders; unknown names become empty text.
+
+Markdown:
+  eli5: A way of writing plain text so it can have simple formatting, like bold or lists, and still open in any text editor.
+  english: A lightweight text format. The offer letter is a .md file you can open in any text editor or paste into an email.
+  dev: Plain text with lightweight syntax. downloadFile() writes it as text/markdown;charset=utf-8.
+
+browser storage:
+  explainer: true
+  eli5: A little drawer inside your web browser where a website can keep notes on your computer. MarginCraft keeps your settings and keys in this drawer, and nothing leaves it unless you set that up.
+  english: The browser's localStorage for this site. It holds all your settings, machines, presets, research and keys. Clearing your site data for the page erases it.
+  dev: localStorage key margincraft_v3, one JSON blob written on every state change; if the write fails (storage full) it retries once without machine photos.
+
+API key:
+  explainer: true
+  eli5: A long secret code from a company that proves it is you asking. Like a library card: whoever holds it can borrow in your name, so you keep it private.
+  english: A secret token from a service (Tavily, Firecrawl, an AI provider, Cloudflare) that lets the app use your account. In MarginCraft it is stored in your browser and sent only to the service it belongs to.
+  dev: Held in Integrations (aiKey, tavilyKey, firecrawlKey, cfToken) in browser storage, in plain text, and sent as a Bearer header or in the request body to the matching service.
+
+OpenAI-compatible:
+  eli5: A common "language" many AI services speak, so one app can talk to many of them the same way.
+  english: Any AI service that accepts the same request format as OpenAI's chat API: OpenAI itself, Groq, OpenRouter, or a local program like Ollama or LM Studio.
+  dev: POST {aiBase}/chat/completions with a Bearer key, model from Settings (default gpt-4o-mini), temperature 0.2; the reply must be JSON.
+
+Base URL:
+  eli5: The web address of the AI service the app should talk to.
+  english: The address of the AI service. The default is OpenAI's; change it to use another OpenAI-compatible service.
+  dev: Integrations.aiBase, default https://api.openai.com/v1; a trailing slash is stripped.
+
+Tavily:
+  eli5: A paid-or-free service that searches the web for you and sends back a list of results.
+  english: A web-search service with an API. One of four search providers MarginCraft can use for competitor prices. Needs your own key.
+  dev: POST https://api.tavily.com/search with api_key in the body, search_depth "advanced", max_results 8.
+
+Firecrawl:
+  eli5: Another service that searches the web for you and sends back a list of results.
+  english: A web-search and scraping service with an API. One of the four search providers. Needs your own key.
+  dev: POST https://api.firecrawl.dev/v1/search with a Bearer key, limit 8.
+
+SearXNG:
+  eli5: A search engine you can run on your own computer or server, so searches do not go through a big company.
+  english: A self-hosted search engine. You give MarginCraft its address. It must allow requests from your browser (CORS).
+  dev: GET {searxngUrl}/search?q=...&format=json&categories=shopping,general, called straight from the browser, so the server needs CORS headers.
+
+Crawl4AI:
+  eli5: A tool you run yourself that can search and read web pages for you.
+  english: A self-hosted crawler with a search endpoint. You give MarginCraft its address. It must allow requests from your browser (CORS).
+  dev: POST {crawl4aiUrl}/search with { query, num_results }; results read from results or data.
+
+CORS:
+  eli5: A safety rule in web browsers. A website may only talk to another address if that address says "yes, you may". If it does not say yes, the browser blocks the call.
+  english: The browser rule that decides whether one website may call another. Your self-hosted search server has to allow it, or search from the page fails.
+  dev: SearXNG and Crawl4AI are fetched cross-origin from the page, so they must send Access-Control-Allow-Origin. GUIDE.md says Tavily and Firecrawl work without extra setup.
+
+Cloudflare Workers AI:
+  eli5: A service that makes pictures from a short description. MarginCraft uses it to draw a reference photo of a machine.
+  english: Cloudflare's AI service. Used only for the optional machine "Photo" button, with your own account ID and token.
+  dev: POST https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/{model}, default model @cf/black-forest-labs/flux.1-schnell, num_steps 4; the result is shrunk to max 440 px JPEG and stored in browser storage.
+
+Apps Script:
+  eli5: A free tool from Google that lets you run a small program attached to your Google account. MarginCraft uses it as a mailbox that writes new rows into your spreadsheet.
+  english: Google's scripting service. The Sheets price log is a small script you paste there and deploy as a web app; MarginCraft then sends rows to its address.
+  dev: sheetsScript(secret) returns a doPost handler; the app POSTs { secret, fileId, rows } as text/plain. The deployed web app must be "Anyone", so the secret is the only gate.
+
+Google Sheets:
+  eli5: Google's online spreadsheet.
+  english: Google's spreadsheet app. The optional price log keeps one dated row each time you sync, in a tab named after the machine.
+  dev: Written through the Apps Script bridge; a spreadsheet called "MarginCraft pricing log" is created if none is set.
+
+CSV:
+  eli5: A very simple spreadsheet file, just rows of values separated by commas. Excel and Google Sheets can open it.
+  english: A plain-text table format. When no Sheets address is set, "Export CSV" downloads the price-log row as margincraft-log-DATE.csv.
+  dev: rowsToCsv(rows): fixed header, every value double-quoted with embedded quotes doubled.
+
+Vite:
+  eli5: The tool that turns the app's source code into a website your browser can open.
+  english: The build tool behind the app. It serves the app while you develop and builds the finished site into dist/.
+  dev: Vite 6 with @vitejs/plugin-react and @tailwindcss/vite. Dev and preview port 26419 (strictPort).
+
+Bun:
+  eli5: A program that installs the app's building blocks and runs its commands.
+  english: A JavaScript tool used here as the package manager and script runner (bun install, bun run dev).
+  dev: bun 1.4.2 in CI (oven-sh/setup-bun), bun.lock, installs with --frozen-lockfile.
+
+localhost:
+  eli5: The name of your own computer when you talk to it from inside itself. A page at localhost is only on your machine.
+  english: Your own computer's address. The dev server answers at http://localhost:26419.
+  dev: vite.config.js sets server.host 0.0.0.0, so the dev server is also reachable from other machines on the network while it runs.

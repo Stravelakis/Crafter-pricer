@@ -31,7 +31,7 @@ The complete manual. Every field in the app also has a **?** button with the sam
 
 **Presumptive tax.** Brackets describe your revenue over a whole period (a month or a year), not one job. The app looks up the bracket for your **expected period revenue**, works out the effective rate (tax ÷ revenue) and charges each job that rate. Example: brackets "up to 25,000 → flat 600", expected yearly revenue 20,000 → 3% effective, so a 500 job carries 15 of tax. If no period revenue is set, the job's own revenue is used and a warning appears.
 
-## Features
+## What each screen does
 
 ### Studio
 
