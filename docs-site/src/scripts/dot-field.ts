@@ -30,14 +30,14 @@ const DEFAULTS: Required<DotFieldOptions> = {
   glowRadius: 160,
   sparkle: false,
   waveAmplitude: 0,
-  gradientFrom: "rgba(168, 85, 247, 0.35)",
-  gradientTo: "rgba(180, 151, 207, 0.25)",
-  glowColor: "#120F17",
+  gradientFrom: 'rgba(168, 85, 247, 0.35)',
+  gradientTo: 'rgba(180, 151, 207, 0.25)',
+  glowColor: '#120F17',
   opacity: 1,
 };
 
 const TWO_PI = Math.PI * 2;
-const SVG_NS = "http://www.w3.org/2000/svg";
+const SVG_NS = 'http://www.w3.org/2000/svg';
 const FRAME_MS = 1000 / 60;
 // The original re-rolls sparkles every 8 frames at 60fps.
 const SPARKLE_MS = FRAME_MS * 8;
@@ -46,18 +46,18 @@ const SETTLE = 0.01;
 
 export function mountDotField(host: HTMLElement, options: DotFieldOptions = {}): () => void {
   const p = { ...DEFAULTS, ...options };
-  const canvas = document.createElement("canvas");
-  const base = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  const baseCtx = base.getContext("2d");
+  const canvas = document.createElement('canvas');
+  const base = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const baseCtx = base.getContext('2d');
   if (!ctx || !baseCtx) return () => {};
 
-  canvas.className = "dot-field-canvas";
+  canvas.className = 'dot-field-canvas';
   if (p.opacity !== 1) host.style.opacity = String(p.opacity);
   const glow = createGlow(p.glowColor, p.glowRadius);
   host.append(canvas, glow.svg);
 
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const rad = p.dotRadius / 2;
   const sparkleRad = rad * 1.8;
@@ -139,7 +139,7 @@ export function mountDotField(host: HTMLElement, options: DotFieldOptions = {}):
     sparkleSeed = -1;
     engagement = 0;
     glowOpacity = 0;
-    glow.circle.style.opacity = "0";
+    glow.circle.style.opacity = '0';
 
     fill = gradientFor(ctx!);
     paintBase();
@@ -289,8 +289,8 @@ export function mountDotField(host: HTMLElement, options: DotFieldOptions = {}):
     if (engagement < 0.001) engagement = 0;
     glowOpacity += (engagement - glowOpacity) * ease(0.08);
     if (glowOpacity < 0.001) glowOpacity = 0;
-    glow.circle.setAttribute("cx", mx.toFixed(1));
-    glow.circle.setAttribute("cy", my.toFixed(1));
+    glow.circle.setAttribute('cx', mx.toFixed(1));
+    glow.circle.setAttribute('cy', my.toFixed(1));
     glow.circle.style.opacity = glowOpacity.toFixed(3);
 
     frameId++;
@@ -365,9 +365,7 @@ export function mountDotField(host: HTMLElement, options: DotFieldOptions = {}):
   }
 
   function busy() {
-    return (
-      displaced.size > 0 || engagement > 0 || glowOpacity > 0 || (waving && !reducedMotion.matches)
-    );
+    return displaced.size > 0 || engagement > 0 || glowOpacity > 0 || (waving && !reducedMotion.matches);
   }
 
   function cancel() {
@@ -455,49 +453,49 @@ export function mountDotField(host: HTMLElement, options: DotFieldOptions = {}):
   build();
   resizeObserver.observe(host);
   viewObserver.observe(host);
-  window.addEventListener("pointermove", onPointerMove, { passive: true });
-  document.addEventListener("visibilitychange", onVisibility);
-  reducedMotion.addEventListener("change", onMotionPreference);
+  window.addEventListener('pointermove', onPointerMove, { passive: true });
+  document.addEventListener('visibilitychange', onVisibility);
+  reducedMotion.addEventListener('change', onMotionPreference);
 
   return () => {
     cancel();
     clearTimeout(resizeTimer);
     resizeObserver.disconnect();
     viewObserver.disconnect();
-    window.removeEventListener("pointermove", onPointerMove);
-    document.removeEventListener("visibilitychange", onVisibility);
-    reducedMotion.removeEventListener("change", onMotionPreference);
+    window.removeEventListener('pointermove', onPointerMove);
+    document.removeEventListener('visibilitychange', onVisibility);
+    reducedMotion.removeEventListener('change', onMotionPreference);
     canvas.remove();
     glow.svg.remove();
   };
 }
 
 function createGlow(color: string, radius: number) {
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("class", "dot-field-glow");
-  svg.setAttribute("aria-hidden", "true");
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'dot-field-glow');
+  svg.setAttribute('aria-hidden', 'true');
 
   const id = `dot-field-glow-${Math.random().toString(36).slice(2, 9)}`;
-  const gradient = document.createElementNS(SVG_NS, "radialGradient");
-  gradient.setAttribute("id", id);
+  const gradient = document.createElementNS(SVG_NS, 'radialGradient');
+  gradient.setAttribute('id', id);
   for (const [offset, stopColor] of [
-    ["0%", color],
-    ["100%", "transparent"],
+    ['0%', color],
+    ['100%', 'transparent'],
   ]) {
-    const stop = document.createElementNS(SVG_NS, "stop");
-    stop.setAttribute("offset", offset);
-    stop.setAttribute("stop-color", stopColor);
+    const stop = document.createElementNS(SVG_NS, 'stop');
+    stop.setAttribute('offset', offset);
+    stop.setAttribute('stop-color', stopColor);
     gradient.append(stop);
   }
-  const defs = document.createElementNS(SVG_NS, "defs");
+  const defs = document.createElementNS(SVG_NS, 'defs');
   defs.append(gradient);
 
-  const circle = document.createElementNS(SVG_NS, "circle");
-  circle.setAttribute("cx", "-9999");
-  circle.setAttribute("cy", "-9999");
-  circle.setAttribute("r", String(radius));
-  circle.setAttribute("fill", `url(#${id})`);
-  circle.style.opacity = "0";
+  const circle = document.createElementNS(SVG_NS, 'circle');
+  circle.setAttribute('cx', '-9999');
+  circle.setAttribute('cy', '-9999');
+  circle.setAttribute('r', String(radius));
+  circle.setAttribute('fill', `url(#${id})`);
+  circle.style.opacity = '0';
 
   svg.append(defs, circle);
   return { svg, circle };
